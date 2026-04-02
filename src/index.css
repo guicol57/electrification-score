@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: linear-gradient(170deg, #f0f9ff 0%, #faf5ff 40%, #fff7ed 100%);
+  min-height: 100vh;
+}
