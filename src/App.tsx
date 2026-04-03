@@ -90,13 +90,15 @@ function SL({ color, icon, label, style: s }: { color: string; icon: string; lab
   return <h4 style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.04em', ...s }}>{icon} {label}</h4>
 }
 
-function Tip({ text, children }: { text: string; children: React.ReactNode }) {
+function Tip({ text, children, align = 'center', interactive = false, below = false }: { text: React.ReactNode; children: React.ReactNode; align?: 'center' | 'left'; interactive?: boolean; below?: boolean }) {
   const [h, setH] = useState(false)
+  const hPos = align === 'left' ? { left: 0 } : { left: '50%', transform: 'translateX(-50%)' }
+  const vPos = below ? { top: '100%', marginTop: 4 } : { bottom: '50%' }
   return (
     <div style={{ position: 'relative', display: 'inline-block' }} onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)}>
       {children}
       {h && (
-        <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 4, background: '#1f2937', color: '#fff', padding: '6px 10px', borderRadius: 7, fontSize: 10, lineHeight: 1.4, width: 260, zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', pointerEvents: 'none', textAlign: 'left' }}>
+        <div style={{ position: 'absolute', ...vPos, ...hPos, background: '#1f2937', color: '#fff', padding: '6px 10px', borderRadius: 7, fontSize: 10, lineHeight: 1.4, width: interactive ? 300 : 260, zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', pointerEvents: interactive ? 'auto' : 'none', textAlign: 'left' }}>
           {text}
         </div>
       )}
@@ -284,9 +286,14 @@ function Results({ cur, tgt }: { cur: AnnualResult; tgt: AnnualResult }) {
           </div>
         ) : null
       ) : (
-        <div style={{ padding: 7, borderRadius: 7, background: sv > 0 ? 'linear-gradient(135deg,#2563eb,#3b82f6)' : '#f3f4f6', color: sv > 0 ? '#fff' : '#374151', textAlign: 'center', marginBottom: 8 }}>
-          <div style={{ fontSize: 22, fontWeight: 900 }}>{sv > 0 ? '-' : '+'}{roundTen(Math.abs(sv)).toLocaleString('fr-FR')} €/an</div>
-          <div style={{ fontSize: 10, opacity: 0.85 }}>coût complet : {roundTen(cur.totalCost).toLocaleString('fr-FR')} → {roundTen(tgt.totalCost).toLocaleString('fr-FR')} €</div>
+        <div style={{ position: 'relative', cursor: 'help' }} onMouseEnter={(e) => { const t = e.currentTarget.querySelector('[data-tip]') as HTMLElement; if (t) t.style.display = 'block' }} onMouseLeave={(e) => { const t = e.currentTarget.querySelector('[data-tip]') as HTMLElement; if (t) t.style.display = 'none' }}>
+          <div style={{ padding: 7, borderRadius: 7, background: sv > 0 ? 'linear-gradient(135deg,#2563eb,#3b82f6)' : '#f3f4f6', color: sv > 0 ? '#fff' : '#374151', textAlign: 'center', marginBottom: 8 }}>
+            <div style={{ fontSize: 22, fontWeight: 900 }}>{sv > 0 ? '-' : '+'}{roundTen(Math.abs(sv)).toLocaleString('fr-FR')} €/an</div>
+            <div style={{ fontSize: 10, opacity: 0.85 }}>coût complet : {roundTen(cur.totalCost).toLocaleString('fr-FR')} → {roundTen(tgt.totalCost).toLocaleString('fr-FR')} € <span style={{ opacity: 0.7 }}>ⓘ</span></div>
+          </div>
+          <div data-tip="" style={{ display: 'none', position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', background: '#1f2937', color: '#fff', padding: '6px 10px', borderRadius: 7, fontSize: 10, lineHeight: 1.4, width: 280, zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', pointerEvents: 'none', textAlign: 'left' }}>
+            Économie annuelle sur les coûts de fonctionnement (énergie + entretien) entre le scénario actuel et le scénario cible, hors investissement. C'est ce que vous économisez chaque année en dépenses courantes.
+          </div>
         </div>
       )}
 
@@ -349,21 +356,36 @@ function BizCase({ curSc, tgtSc, curR, tgtR }: { curSc: Scenario; tgtSc: Scenari
   return (
     <div style={{ background: '#fff', borderRadius: 12, padding: '12px 10px', border: '2px solid #e5e7eb' }}>
       <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 800, color: '#1f2937' }}>💰 Business Case</h3>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10, padding: 8, borderRadius: 7, background: '#f9fafb' }}>
+      <div style={{ padding: '8px 10px', borderRadius: 7, background: '#eff6ff', border: '1px solid #bfdbfe', marginBottom: 10, fontSize: 10, color: '#1e40af', lineHeight: 1.5 }}>
+        <strong>Comment lire cette page ?</strong> On compare le <strong>coût cumulé</strong> du scénario actuel (sans rien changer) vs. le scénario cible (après investissement).
+        Le scénario cible démarre avec l'investissement initial, mais ses coûts annuels sont plus faibles. L'année de <strong>bascule</strong> est le moment où le cumul cible passe en-dessous du cumul actuel : à partir de là, vous êtes « gagnant ».
+      </div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 10, padding: 8, borderRadius: 7, background: '#f9fafb' }}>
         <div><FL>Durée</FL><NI value={years} onChange={v => setYears(Math.max(3, Math.min(20, v)))} suffix="ans" step={1} w={40} /></div>
-        <div><FL>Aides</FL><NI value={aidPct} onChange={v => setAidPct(Math.max(0, Math.min(90, v)))} suffix="%" step={5} w={40} /></div>
-        <div><FL>Infl. fossiles</FL><NI value={fInfl} onChange={v => setFInfl(Math.max(0, Math.min(15, v)))} suffix="%/an" step={1} w={36} /></div>
-        <div><FL>Infl. élec</FL><NI value={eInfl} onChange={v => setEInfl(Math.max(0, Math.min(10, v)))} suffix="%/an" step={1} w={36} /></div>
+        <div><FL>Aides <Tip interactive align="left" below text={<>
+            <strong>Aides à l'électrification en France :</strong><br /><br />
+            🏠 <strong>Logement</strong><br />
+            • <a href="https://www.maprimerenov.gouv.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>MaPrimeRénov'</a> — rénovation énergétique (jusqu'à 90% pour les ménages modestes)<br />
+            • <a href="https://www.ecologie.gouv.fr/cee" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>CEE</a> (Certificats d'Économie d'Énergie) — primes des fournisseurs d'énergie<br />
+            • <a href="https://www.service-public.fr/particuliers/vosdroits/F35083" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Éco-PTZ</a> — prêt à taux zéro pour travaux de rénovation<br />
+            • TVA réduite à 5.5% sur les travaux de rénovation énergétique<br /><br />
+            🚗 <strong>Mobilité</strong><br />
+            • <a href="https://www.primealaconversion.gouv.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Bonus écologique</a> — jusqu'à 7 000 € pour un véhicule électrique<br />
+            • <a href="https://www.primealaconversion.gouv.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Prime à la conversion</a> — mise au rebut d'un véhicule polluant<br />
+            • <a href="https://www.service-public.fr/particuliers/vosdroits/F36828" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Leasing social</a> — VE à 100 €/mois pour les ménages modestes
+          </>}><span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></FL><NI value={aidPct} onChange={v => setAidPct(Math.max(0, Math.min(90, v)))} suffix="%" step={5} w={40} /></div>
+        <div><FL>Inflation fossiles</FL><NI value={fInfl} onChange={v => setFInfl(Math.max(0, Math.min(15, v)))} suffix="%/an" step={1} w={36} /></div>
+        <div><FL>Inflation élec</FL><NI value={eInfl} onChange={v => setEInfl(Math.max(0, Math.min(10, v)))} suffix="%/an" step={1} w={36} /></div>
       </div>
       <div style={{ marginBottom: 10, padding: 8, borderRadius: 7, background: '#fef2f2' }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', marginBottom: 4 }}>🏗️ Investissement année 1</div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
             {inv.dpeJump > 0 && <tr><td style={tdS}>Rénovation ({inv.dpeJump} cl., {inv.renoPerM2}€/m²)</td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.renoCost).toLocaleString('fr-FR')} €</td></tr>}
-            {inv.heatingDelta > 0 && <tr><td style={tdS}>Δ Chauffage</td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.heatingDelta).toLocaleString('fr-FR')} €</td></tr>}
-            {inv.hwDelta > 0 && <tr><td style={tdS}>Δ ECS</td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.hwDelta).toLocaleString('fr-FR')} €</td></tr>}
-            {inv.cookDelta > 0 && <tr><td style={tdS}>Δ Cuisson</td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.cookDelta).toLocaleString('fr-FR')} €</td></tr>}
-            {inv.vehicleDelta > 0 && <tr><td style={tdS}>Δ Véhicule(s)</td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.vehicleDelta).toLocaleString('fr-FR')} €</td></tr>}
+            {inv.heatingDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût du nouvel équipement de chauffage par rapport à la valeur résiduelle (30%) de l'actuel." align="left">Δ Chauffage <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.heatingDelta).toLocaleString('fr-FR')} €</td></tr>}
+            {inv.hwDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût du nouvel équipement d'eau chaude par rapport à la valeur résiduelle (30%) de l'actuel." align="left">Δ ECS <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.hwDelta).toLocaleString('fr-FR')} €</td></tr>}
+            {inv.cookDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût du nouvel équipement de cuisson par rapport à la valeur résiduelle (30%) de l'actuel." align="left">Δ Cuisson <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.cookDelta).toLocaleString('fr-FR')} €</td></tr>}
+            {inv.vehicleDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût d'achat du(des) véhicule(s) cible par rapport au(x) véhicule(s) actuel(s)." align="left">Δ Véhicule(s) <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.vehicleDelta).toLocaleString('fr-FR')} €</td></tr>}
             <tr><td style={thS}>Total brut</td><td style={{ ...thS, textAlign: 'right' }}>{roundTen(inv.totalInvestment).toLocaleString('fr-FR')} €</td></tr>
             <tr><td style={{ ...tdS, color: '#059669' }}>Aides ({aidPct}%)</td><td style={{ ...tdS, textAlign: 'right', color: '#059669', fontWeight: 600 }}>-{roundTen(aid).toLocaleString('fr-FR')} €</td></tr>
             <tr><td style={{ ...thS, fontWeight: 800 }}>Reste à charge</td><td style={{ ...thS, textAlign: 'right', fontWeight: 800 }}>{roundTen(net).toLocaleString('fr-FR')} €</td></tr>
@@ -371,18 +393,24 @@ function BizCase({ curSc, tgtSc, curR, tgtR }: { curSc: Scenario; tgtSc: Scenari
         </table>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginBottom: 10 }}>
-        <div style={{ padding: 6, borderRadius: 7, background: '#f0fdf4', textAlign: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 900, color: '#059669' }}>{roundTen(cB - tB) > 0 ? '+' : ''}{roundTen(cB - tB).toLocaleString('fr-FR')} €</div>
-          <div style={{ fontSize: 8, color: '#6b7280' }}>éco./an (an 1)</div>
-        </div>
-        <div style={{ padding: 6, borderRadius: 7, background: bk ? '#dbeafe' : '#fef3c7', textAlign: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 900, color: bk ? '#2563eb' : '#d97706' }}>{bk ? `An ${bk.year}` : `>${years} ans`}</div>
-          <div style={{ fontSize: 8, color: '#6b7280' }}>bascule</div>
-        </div>
-        <div style={{ padding: 6, borderRadius: 7, background: gain >= 0 ? '#f0fdf4' : '#fef2f2', textAlign: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 900, color: gain >= 0 ? '#059669' : '#ef4444' }}>{gain >= 0 ? '+' : ''}{roundTen(gain).toLocaleString('fr-FR')} €</div>
-          <div style={{ fontSize: 8, color: '#6b7280' }}>net à {years} ans</div>
-        </div>
+        <Tip text="Économie annuelle sur les coûts de fonctionnement (énergie + entretien) entre le scénario actuel et le scénario cible, hors investissement. C'est ce que vous économisez chaque année en dépenses courantes.">
+          <div style={{ padding: 6, borderRadius: 7, background: '#f0fdf4', textAlign: 'center', cursor: 'help' }}>
+            <div style={{ fontSize: 16, fontWeight: 900, color: '#059669' }}>{roundTen(cB - tB) > 0 ? '+' : ''}{roundTen(cB - tB).toLocaleString('fr-FR')} €</div>
+            <div style={{ fontSize: 8, color: '#6b7280' }}>éco./an (an 1) <span style={{ opacity: 0.5 }}>ⓘ</span></div>
+          </div>
+        </Tip>
+        <Tip text="Année à laquelle le coût cumulé du scénario cible (investissement + fonctionnement) devient inférieur au coût cumulé du scénario actuel. À partir de cette année, vous êtes « gagnant ».">
+          <div style={{ padding: 6, borderRadius: 7, background: bk ? '#dbeafe' : '#fef3c7', textAlign: 'center', cursor: 'help' }}>
+            <div style={{ fontSize: 16, fontWeight: 900, color: bk ? '#2563eb' : '#d97706' }}>{bk ? `An ${bk.year}` : `>${years} ans`}</div>
+            <div style={{ fontSize: 8, color: '#6b7280' }}>bascule <span style={{ opacity: 0.5 }}>ⓘ</span></div>
+          </div>
+        </Tip>
+        <Tip text={`Gain (ou perte) net à ${years} ans : différence entre le coût cumulé du scénario actuel et celui du scénario cible, investissement inclus. Tient compte de l'inflation différenciée fossiles/électricité.`}>
+          <div style={{ padding: 6, borderRadius: 7, background: gain >= 0 ? '#f0fdf4' : '#fef2f2', textAlign: 'center', cursor: 'help' }}>
+            <div style={{ fontSize: 16, fontWeight: 900, color: gain >= 0 ? '#059669' : '#ef4444' }}>{gain >= 0 ? '+' : ''}{roundTen(gain).toLocaleString('fr-FR')} €</div>
+            <div style={{ fontSize: 8, color: '#6b7280' }}>net à {years} ans <span style={{ opacity: 0.5 }}>ⓘ</span></div>
+          </div>
+        </Tip>
       </div>
       <div style={{ height: 220, marginBottom: 6 }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -397,6 +425,9 @@ function BizCase({ curSc, tgtSc, curR, tgtR }: { curSc: Scenario; tgtSc: Scenari
             <Line type="monotone" dataKey="cible" stroke="#10b981" strokeWidth={2} name="Cible (cumulé)" dot={false} />
           </LineChart>
         </ResponsiveContainer>
+      </div>
+      <div style={{ padding: '6px 10px', borderRadius: 7, background: '#fefce8', border: '1px solid #fde68a', fontSize: 9, color: '#92400e', lineHeight: 1.4 }}>
+        <strong>⚠️ Avertissement :</strong> Ces projections sont purement indicatives et reposent sur des hypothèses simplifiées (prix moyens, inflation constante, taux d'aide forfaitaire). Elles ne constituent en aucun cas un conseil financier. Les résultats réels peuvent varier significativement. Aucune responsabilité ne saurait être engagée sur la base de ces estimations.
       </div>
     </div>
   )
@@ -418,22 +449,88 @@ function Meth() {
         <br />👉 Bilan complet : <a href="https://nosgestesclimat.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', fontWeight: 600 }}>Nos Gestes Climat</a> (ADEME).
       </div>
       <h3 style={h3s}>1. Logement (PCAF 2023)</h3>
-      <table style={ts}><thead><tr><th style={th}>Équip.</th><th style={th}>kgCO₂/kWh</th><th style={th}>CAPEX</th><th style={th}>OPEX</th><th style={th}>Tot</th></tr></thead>
-        <tbody>{HEATING.map(t => <tr key={t.id}><td style={td}>{t.label}</td><td style={td}>{t.ef}</td><td style={td}>{t.capex.toFixed(3)}</td><td style={td}>{t.opex.toFixed(2)}</td><td style={{ ...td, fontWeight: 600 }}>{(t.capex + t.opex).toFixed(2)}</td></tr>)}</tbody>
+      <div style={ps}>
+        <strong>Comment ça marche ?</strong> Chaque classe DPE correspond à une consommation d'énergie en kWh/m²/an (ex : un DPE E ≈ 290 kWh/m²/an).
+        On multiplie cette valeur par la surface du logement pour obtenir la consommation totale, puis on la répartit entre les usages :
+        chauffage (67%), eau chaude (20%) et cuisson (13%) — moyennes ADEME.
+        <br /><br />
+        <strong>Émissions :</strong> Pour chaque usage, on multiplie les kWh consommés par le <em>facteur d'émission</em> (FE) de l'équipement choisi.
+        Par exemple : 10 000 kWh × 0.227 kgCO₂/kWh (chaudière gaz) = 2 270 kgCO₂/an.
+        <br />
+        <strong>Coûts — ce qu'il y a derrière les chiffres :</strong>
+        <br />
+        • <strong>CAPEX</strong> (coût d'investissement ramené au kWh) : achat de l'équipement amorti sur sa durée de vie et la consommation totale. Par ex. une chaudière gaz à 5 000 € amortie sur 250 000 kWh ≈ 0.02 €/kWh.
+        <br />
+        • <strong>OPEX</strong> (coût de fonctionnement par kWh) : prix de l'énergie + entretien annuel.
+        <br /><br />
+        <strong>Hypothèses de prix de l'énergie (scénario prix hauts) :</strong>
+        <br />
+        • Gaz naturel : ~0.12-0.13 €/kWh TTC (vs <a href="https://www.cre.fr/consommateurs/prix-reperes-et-references/prix-repere-de-vente-de-gaz-naturel-a-destination-des-clients-residentiels.html" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>prix repère CRE</a> à 0.104 €/kWh en avril 2026 pour le profil B1). Notre hypothèse est volontairement haute pour anticiper les hausses futures et les surcoûts d'abonnement.
+        <br />
+        • Fioul domestique : ~0.14 €/kWh TTC (hypothèse ~1.40 €/litre, soit ~14 €/100 kWh PCI)
+        <br />
+        • Électricité : ~0.20 €/kWh TTC, cohérent avec le <a href="https://www.cre.fr/consommateurs/comprendre-les-tarifs-reglementes-de-vente-delectricite-trve.html" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>TRVE (CRE)</a> à 0.194 €/kWh en option base 6 kVA (février 2026)
+        <br />
+        • Bois / granulés : ~0.05 €/kWh TTC
+        <br />
+        • L'entretien est inclus dans l'OPEX : ~0.02-0.04 €/kWh selon les équipements (contrat annuel chaudière, ramonage, etc.)
+        <br /><br />
+        <strong>Sources :</strong> <a href="https://www.cre.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>CRE</a> (prix régulés gaz et électricité), <a href="https://www.ademe.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>ADEME</a> (répartition par usage, DPE). Ces coûts sont indicatifs et correspondent à un scénario prix hauts.
+      </div>
+      <p style={{ fontSize: 10, color: '#6b7280', margin: '0 0 4px', lineHeight: 1.4 }}>Périmètre FE : combustion + amont énergie</p>
+      <table style={ts}><thead><tr><th style={th}>Équip.</th><th style={th}>kgCO₂/kWh</th><th style={th}>CAPEX (€/kWh)</th><th style={th}>OPEX (€/kWh)</th><th style={th}>Tot (€/kWh)</th></tr></thead>
+        <tbody>{HEATING.map(t => <tr key={t.id}><td style={td}>{t.id === 'heat_pump' ? <Tip text="La PAC a un COP ≈ 3 : elle produit ~3 kWh de chaleur par kWh d'électricité consommé. Ses émissions et coûts par kWh utile sont donc ~3× plus bas qu'un radiateur électrique." align="left">{t.label} <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip> : t.label}</td><td style={td}>{t.ef}</td><td style={td}>{t.capex.toFixed(3)}</td><td style={td}>{t.opex.toFixed(2)}</td><td style={{ ...td, fontWeight: 600 }}>{(t.capex + t.opex).toFixed(2)}</td></tr>)}</tbody>
       </table>
       <h3 style={h3s}>2. Mobilité (Base Carbone 2020-2025)</h3>
-      <table style={ts}><thead><tr><th style={th}>Mode</th><th style={th}>kgCO₂/km</th><th style={th}>CAPEX</th><th style={th}>OPEX</th><th style={th}>Tot</th></tr></thead>
+      <div style={ps}>
+        <strong>Comment ça marche ?</strong> Les facteurs d'émission et les coûts sont exprimés <strong>par passager.km</strong> (et non par véhicule.km).
+        Pour chaque mode de transport, on multiplie les km parcourus par an par le facteur d'émission par passager.km.
+        Par exemple : 15 000 km × 0.22 kgCO₂/passager.km (compacte diesel, 1 occupant) = 3 300 kgCO₂/an.
+        <br />
+        Pour les véhicules personnels (voitures, motos), les émissions sont divisées par le nombre d'occupants déclarés — covoiturer divise l'empreinte par passager.
+        <br /><br />
+        <strong>Coûts — ce qu'il y a derrière les chiffres :</strong>
+        <br />
+        • <strong>CAPEX</strong> (coût d'investissement ramené au km) : achat du véhicule amorti sur sa durée de vie. Par ex. une compacte essence à 25 000 € amortie sur 125 000 km ≈ 0.20 €/km.
+        Pour les transports en commun et l'avion, le CAPEX est nul (pas de véhicule personnel à acheter).
+        <br />
+        • <strong>OPEX</strong> (coût de fonctionnement par km) : carburant ou électricité + entretien/révisions + assurance + péages courants.
+        <br /><br />
+        <strong>Hypothèses de prix (scénario prix hauts) :</strong>
+        <br />
+        • Carburant fossile : ~2 €/litre (essence et diesel), soit 0.12-0.16 €/km selon la consommation du véhicule
+        <br />
+        • Électricité recharge VE : ~0.25 €/kWh (mix domicile/borne publique), soit 0.04-0.05 €/km
+        <br />
+        • Entretien thermique : ~0.05 €/km — Entretien VE : ~0.03 €/km (moins de pièces d'usure)
+        <br />
+        • Transports en commun : prix du billet/abonnement ramené au km (hypothèse abonnement annuel)
+        <br /><br />
+        <strong>Sources :</strong> <a href="https://www.arval.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>Arval TCO Scope 2024</a>, <a href="https://www.strategie.gouv.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>France Stratégie 2022</a>, hypothèses propres au simulateur. Ces coûts sont indicatifs et peuvent varier selon l'usage réel, la région et les conditions de marché.
+      </div>
+      <p style={{ fontSize: 10, color: '#6b7280', margin: '0 0 4px', lineHeight: 1.4 }}>Périmètre FE : combustion + amont énergie + fabrication véhicule (+ traînées de condensation pour l'avion)</p>
+      <table style={ts}><thead><tr><th style={th}>Mode</th><th style={th}>kgCO₂/pass.km</th><th style={th}>CAPEX (€/pass.km)</th><th style={th}>OPEX (€/pass.km)</th><th style={th}>Tot (€/pass.km)</th></tr></thead>
         <tbody>{TRANSPORT_MODES.map(t => <tr key={t.id}><td style={td}>{t.label}</td><td style={td}>{t.ef}</td><td style={td}>{t.capex.toFixed(2)}</td><td style={td}>{t.opex.toFixed(2)}</td><td style={{ ...td, fontWeight: 600 }}>{(t.capex + t.opex).toFixed(2)}</td></tr>)}</tbody>
       </table>
       <h3 style={h3s}>3. Rénovation (€/m²)</h3>
-      <table style={ts}><thead><tr><th style={th}>Saut</th><th style={th}>€/m²</th><th style={th}>80m²</th></tr></thead>
-        <tbody>{Object.entries(RENOVATION_COST_PER_CLASS).map(([k, v]) => <tr key={k}><td style={td}>{k} cl.</td><td style={td}>{v}</td><td style={td}>{roundTen(v * 80).toLocaleString('fr-FR')} €</td></tr>)}</tbody>
+      <p style={{ fontSize: 10, color: '#6b7280', margin: '0 0 4px', lineHeight: 1.4 }}>Source : <a href="https://www.effy.fr/travaux-energetique/renovation-globale/prix" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>Effy — Prix rénovation globale</a>, moyennes France 2024</p>
+      <table style={ts}><thead><tr><th style={th}>Saut</th><th style={th}>€/m²</th><th style={th}>Travaux types</th></tr></thead>
+        <tbody>
+          {([
+            [1, 'Travaux légers : calorifugeage, VMC simple flux, joints fenêtres'],
+            [2, 'Isolation ciblée : combles ou plancher bas'],
+            [3, 'Isolation intermédiaire : combles + murs ou toiture + VMC double flux'],
+            [4, 'Isolation poussée : murs + toiture + plancher bas'],
+            [5, 'Isolation lourde : murs + toiture + sols + remplacement menuiseries'],
+            [6, 'Rénovation globale BBC : reprise totale de l\'enveloppe thermique (murs, toiture, sols, menuiseries, ventilation)'],
+          ] as [number, string][]).map(([k, desc]) => <tr key={k}><td style={td}>{k} cl.</td><td style={td}>{RENOVATION_COST_PER_CLASS[k]}</td><td style={{ ...td, fontSize: 9, color: '#6b7280' }}>{desc}</td></tr>)}
+        </tbody>
       </table>
       <h3 style={h3s}>4. Sources</h3>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 7, background: '#f0f0ff', border: '1px solid #c7c7ff', marginTop: 4 }}>
         <EcodexLogo size={28} />
         <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.4 }}>
-          FE fournis par <a href="https://getecodex.com" target="_blank" rel="noopener noreferrer" style={{ color: '#4856FF', fontWeight: 700, textDecoration: 'none' }}>Ecodex</a> (1M+ facteurs d'émission) via le <a href="https://getecodex.com/connect" target="_blank" rel="noopener noreferrer" style={{ color: '#4856FF', fontWeight: 600, textDecoration: 'none' }}>protocole MCP</a>. Sources : PCAF, Base Carbone ADEME, EEA.
+          FE fournis par <a href="https://getecodex.com" target="_blank" rel="noopener noreferrer" style={{ color: '#4856FF', fontWeight: 700, textDecoration: 'none' }}>Ecodex</a> (1M+ facteurs d'émission) via le <a href="https://getecodex.com/mcp" target="_blank" rel="noopener noreferrer" style={{ color: '#4856FF', fontWeight: 600, textDecoration: 'none' }}>protocole MCP</a>. Sources : PCAF, Base Carbone ADEME, EEA.
         </div>
       </div>
     </div>
@@ -458,7 +555,7 @@ export default function App() {
           ⚡ Crise énergétique — Évaluez votre exposition aux fossiles
         </div>
         <h1 className="text-xl font-black text-gray-900 tracking-tight m-0">Mon Score d'Électrification</h1>
-        <p className="text-[11px] text-gray-500 m-0">Logement + Mobilité · Émissions · Coûts · ROI</p>
+        <p className="text-[11px] text-gray-500 m-0">Logement + Mobilité</p>
       </div>
 
       <div className="flex justify-center gap-0.5 mb-2 flex-wrap">
