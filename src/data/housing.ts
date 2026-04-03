@@ -1,7 +1,7 @@
 /**
  * Housing energy data
  * Sources:
- *  - Emission factors: PCAF (France 2023, Gate-to-gate) via Ecodex MCP
+ *  - Emission factors: Base Carbone ADEME (France 2023) via Ecodex MCP
  *  - Costs: TCO complet (CAPEX amortissement + OPEX énergie/entretien), scénario prix hauts
  */
 
@@ -44,10 +44,33 @@ export const COOKING: HousingEquipment[] = [
   { id: "cook_induction", label: "Induction", ef: 0.06, capex: 0.01, opex: 0.20, fossil: false, electric: true, equipCost: 600 },
 ]
 
-/** Energy share per housing usage (ADEME average) */
-export const ENERGY_SHARES = { heating: 0.67, hotWater: 0.20, cooking: 0.13 } as const
+/**
+ * Energy shares within DPE scope (chauffage + ECS only).
+ * The DPE covers 5 uses: heating, hot water, cooling, lighting, auxiliaries.
+ * Heating + ECS represent ~90% of DPE energy (cooling, lighting, auxiliaries ~10%).
+ * Within that 90%, heating ≈ 77% and ECS ≈ 23% (from ADEME 67/20 ratio).
+ */
+export const DPE_USEFUL_SHARE = 0.90
+export const ENERGY_SHARES = { heating: 0.77, hotWater: 0.23 } as const
 
-/** DPE class to kWh/m².year median */
+/**
+ * Cooking is NOT included in the DPE.
+ * Average ~200 kWh/person/year (ADEME), weakly correlated with surface.
+ * Formula: 200 + 2 × surface (m²) → ~420 kWh/year for a 110m² home.
+ */
+export function cookingKWh(areaM2: number): number {
+  return 200 + 2 * areaM2
+}
+
+/**
+ * DPE primary energy to final energy conversion factor.
+ * DPE values are in kWh EP (primary energy). Our EFs are per kWh EF (final energy).
+ * Source: https://rt-re-batiment.developpement-durable.gouv.fr (DPE 2026)
+ * Gas/Oil/Wood = 1.0, Electricity = 1.9
+ */
+export const EP_TO_EF_ELEC = 1.9
+
+/** DPE class to kWh EP/m².year median */
 export const DPE_KWH: Record<string, number> = { A: 50, B: 100, C: 170, D: 230, E: 290, F: 370, G: 450 }
 
 /** DPE class colors */
