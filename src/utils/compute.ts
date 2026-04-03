@@ -1,4 +1,4 @@
-import { HEATING, HOT_WATER, COOKING, ENERGY_SHARES, DPE_KWH, DPE_ORDER, RENOVATION_COST_PER_CLASS } from '../data/housing'
+import { HEATING, HOT_WATER, COOKING, ENERGY_SHARES, DPE_USEFUL_SHARE, EP_TO_EF_ELEC, DPE_KWH, DPE_ORDER, RENOVATION_COST_PER_CLASS, cookingKWh } from '../data/housing'
 import { TRANSPORT_MODES } from '../data/transport'
 import type { HousingEquipment } from '../data/housing'
 import type { TransportMode } from '../data/transport'
@@ -90,9 +90,15 @@ export function computeAnnual(sc: Scenario): AnnualResult {
   const hw = HOT_WATER.find(t => t.id === sc.hotWater) || HOT_WATER[0]
   const ck = COOKING.find(t => t.id === sc.cooking) || COOKING[0]
 
-  const hK = kwh * sc.area * ENERGY_SHARES.heating
-  const wK = kwh * sc.area * ENERGY_SHARES.hotWater
-  const cK = kwh * sc.area * ENERGY_SHARES.cooking
+  // DPE values are in kWh EP (primary energy). Convert to final energy.
+  // Gas/Oil/Wood: EP factor = 1 → no conversion. Electricity: EP factor = 1.9.
+  const dpeEP = kwh * sc.area * DPE_USEFUL_SHARE
+  const hEP = dpeEP * ENERGY_SHARES.heating
+  const wEP = dpeEP * ENERGY_SHARES.hotWater
+  const hK = hEP / (ht.electric ? EP_TO_EF_ELEC : 1)
+  const wK = wEP / (hw.electric ? EP_TO_EF_ELEC : 1)
+  // Cooking is NOT in the DPE — estimated separately (already in final energy)
+  const cK = cookingKWh(sc.area)
 
   const heatingCO2 = hK * ht.ef
   const hwCO2 = wK * hw.ef

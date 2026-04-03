@@ -106,14 +106,15 @@ function Tip({ text, children, align = 'center', interactive = false, below = fa
   )
 }
 
-function DPEBtn({ d, active, onClick }: { d: string; active: boolean; onClick: () => void }) {
+function DPEBtn({ d, active, onClick, disabled = false }: { d: string; active: boolean; onClick: () => void; disabled?: boolean }) {
   return (
-    <Tip text={DPE_TIPS[d]}>
-      <button onClick={onClick} style={{
+    <Tip text={disabled ? `DPE ${d} : non disponible (supérieur au scénario actuel)` : DPE_TIPS[d]}>
+      <button onClick={disabled ? undefined : onClick} style={{
         width: 26, height: 26, borderRadius: 5,
         border: active ? '2px solid #1f2937' : '2px solid transparent',
         background: DPE_COLORS[d], color: '#fff', fontWeight: 800, fontSize: 10,
-        cursor: 'pointer', transform: active ? 'scale(1.1)' : 'scale(1)', transition: 'all 0.15s',
+        cursor: disabled ? 'not-allowed' : 'pointer', transform: active ? 'scale(1.1)' : 'scale(1)', transition: 'all 0.15s',
+        opacity: disabled ? 0.3 : 1,
       }}>{d}</button>
     </Tip>
   )
@@ -148,8 +149,8 @@ function TRow({ t, i, onChange, onRemove }: {
 }
 
 /* ── Scenario Panel ── */
-function ScP({ title, emoji, sc, setSc, accent, showWarn }: {
-  title: string; emoji: string; sc: Scenario; setSc: (s: Scenario) => void; accent: string; showWarn: boolean
+function ScP({ title, emoji, sc, setSc, accent, showWarn, areaReadOnly = false, maxDpe }: {
+  title: string; emoji: string; sc: Scenario; setSc: (s: Scenario) => void; accent: string; showWarn: boolean; areaReadOnly?: boolean; maxDpe?: string
 }) {
   const uT = (i: number, k: string, v: any) => {
     const ts = [...sc.transports]; ts[i] = { ...ts[i], [k]: v }; setSc({ ...sc, transports: ts })
@@ -162,8 +163,16 @@ function ScP({ title, emoji, sc, setSc, accent, showWarn }: {
       </div>
       <SL color={accent} icon="🏠" label="Logement" />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-        <div><FL>Surface</FL><NI value={sc.area} onChange={v => setSc({ ...sc, area: v })} suffix="m²" step={5} w={58} /></div>
-        <div><FL>DPE (survolez)</FL><div style={{ display: 'flex', gap: 2 }}>{Object.keys(DPE_COLORS).map(d => <DPEBtn key={d} d={d} active={sc.dpe === d} onClick={() => setSc({ ...sc, dpe: d })} />)}</div></div>
+        <div><FL>Surface</FL>{areaReadOnly
+          ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '7px 8px', borderRadius: 7, border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: 12, color: '#6b7280', width: 58 }}>{sc.area} <span style={{ fontSize: 10 }}>m²</span></span>
+          : <NI value={sc.area} onChange={v => setSc({ ...sc, area: v })} suffix="m²" step={5} w={58} />
+        }</div>
+        <div><FL>DPE (survolez)</FL><div style={{ display: 'flex', gap: 2 }}>{Object.keys(DPE_COLORS).map(d => {
+          const maxIdx = maxDpe ? DPE_ORDER.indexOf(maxDpe as typeof DPE_ORDER[number]) : -1
+          const dIdx = DPE_ORDER.indexOf(d as typeof DPE_ORDER[number])
+          const disabled = maxIdx >= 0 && dIdx > maxIdx
+          return <DPEBtn key={d} d={d} active={sc.dpe === d} onClick={() => setSc({ ...sc, dpe: d })} disabled={disabled} />
+        })}</div></div>
       </div>
       {showWarn && ['D', 'E', 'F', 'G'].includes(sc.dpe) && (
         <div style={{ marginTop: 4, padding: '4px 7px', borderRadius: 5, background: '#fef3c7', border: '1px solid #f59e0b', fontSize: 10, color: '#92400e', lineHeight: 1.3 }}>
@@ -277,25 +286,58 @@ function Results({ cur, tgt }: { cur: AnnualResult; tgt: AnnualResult }) {
         ))}
       </div>
 
-      {/* Conditional banner */}
+      {/* Conditional banner — stacked bar */}
       {isCO2 ? (
-        red > 0 ? (
-          <div style={{ padding: 7, borderRadius: 7, background: 'linear-gradient(135deg,#059669,#10b981)', color: '#fff', textAlign: 'center', marginBottom: 8 }}>
-            <div style={{ fontSize: 22, fontWeight: 900 }}>-{Math.round(red)}% d'émissions CO₂</div>
-            <div style={{ fontSize: 10, opacity: 0.85 }}>soit {roundTen(cur.totalCO2 - tgt.totalCO2).toLocaleString('fr-FR')} kgCO₂eq/an évités</div>
+        red > 0 ? (() => {
+          const rest = Math.round(100 - red), rdPct = Math.round(red)
+          const restSmall = rest < 15, redSmall = rdPct < 15
+          return (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', borderRadius: 7, overflow: 'hidden', height: 54 }}>
+                <div style={{ flex: Math.max(rest, 3), background: '#fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 24 }}>
+                  <span style={{ fontSize: restSmall ? 9 : 11, fontWeight: 700, color: '#991b1b' }}>{rest}%</span>
+                </div>
+                <div style={{ flex: Math.max(rdPct, 3), background: 'linear-gradient(135deg,#059669,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: redSmall ? 12 : 20, fontWeight: 900 }}>-{rdPct}%</div>
+                    {!redSmall && <div style={{ fontSize: 9, opacity: 0.85 }}>soit {roundTen(cur.totalCO2 - tgt.totalCO2).toLocaleString('fr-FR')} kgCO₂eq/an évités</div>}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#6b7280', marginTop: 2, padding: '0 2px' }}>
+                <span>restant</span>
+                <span>réduction{redSmall ? ` · ${roundTen(cur.totalCO2 - tgt.totalCO2).toLocaleString('fr-FR')} kgCO₂/an` : ''}</span>
+              </div>
+            </div>
+          )
+        })() : null
+      ) : (() => {
+        const costRed = cur.totalCost > 0 ? Math.round((sv / cur.totalCost) * 100) : 0
+        const absCR = Math.abs(costRed), restC = 100 - absCR
+        const restSmall = restC < 15, ecoSmall = absCR < 15
+        return (
+          <div style={{ position: 'relative', cursor: 'help', marginBottom: 8 }} onMouseEnter={(e) => { const t = e.currentTarget.querySelector('[data-tip]') as HTMLElement; if (t) t.style.display = 'block' }} onMouseLeave={(e) => { const t = e.currentTarget.querySelector('[data-tip]') as HTMLElement; if (t) t.style.display = 'none' }}>
+            <div style={{ display: 'flex', borderRadius: 7, overflow: 'hidden', height: 54 }}>
+              <div style={{ flex: Math.max(restC, 3), background: sv > 0 ? '#dbeafe' : '#fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 24 }}>
+                <span style={{ fontSize: restSmall ? 9 : 11, fontWeight: 700, color: sv > 0 ? '#1e40af' : '#991b1b' }}>{restC}%</span>
+              </div>
+              <div style={{ flex: Math.max(absCR, 3), background: sv > 0 ? 'linear-gradient(135deg,#2563eb,#3b82f6)' : '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: ecoSmall ? 12 : 20, fontWeight: 900 }}>{sv > 0 ? '-' : '+'}{roundTen(Math.abs(sv)).toLocaleString('fr-FR')} €/an</div>
+                  {!ecoSmall && <div style={{ fontSize: 9, opacity: 0.85 }}>{roundTen(cur.totalCost).toLocaleString('fr-FR')} → {roundTen(tgt.totalCost).toLocaleString('fr-FR')} € <span style={{ opacity: 0.7 }}>ⓘ</span></div>}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#6b7280', marginTop: 2, padding: '0 2px' }}>
+              <span>restant</span>
+              <span>économie{ecoSmall ? ` · ${roundTen(cur.totalCost).toLocaleString('fr-FR')} → ${roundTen(tgt.totalCost).toLocaleString('fr-FR')} €` : ''} <span style={{ opacity: 0.5 }}>ⓘ</span></span>
+            </div>
+            <div data-tip="" style={{ display: 'none', position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', background: '#1f2937', color: '#fff', padding: '6px 10px', borderRadius: 7, fontSize: 10, lineHeight: 1.4, width: 280, zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', pointerEvents: 'none', textAlign: 'left' }}>
+              Économie annuelle sur les coûts de fonctionnement (énergie + entretien) entre le scénario actuel et le scénario cible, hors investissement. C'est ce que vous économisez chaque année en dépenses courantes.
+            </div>
           </div>
-        ) : null
-      ) : (
-        <div style={{ position: 'relative', cursor: 'help' }} onMouseEnter={(e) => { const t = e.currentTarget.querySelector('[data-tip]') as HTMLElement; if (t) t.style.display = 'block' }} onMouseLeave={(e) => { const t = e.currentTarget.querySelector('[data-tip]') as HTMLElement; if (t) t.style.display = 'none' }}>
-          <div style={{ padding: 7, borderRadius: 7, background: sv > 0 ? 'linear-gradient(135deg,#2563eb,#3b82f6)' : '#f3f4f6', color: sv > 0 ? '#fff' : '#374151', textAlign: 'center', marginBottom: 8 }}>
-            <div style={{ fontSize: 22, fontWeight: 900 }}>{sv > 0 ? '-' : '+'}{roundTen(Math.abs(sv)).toLocaleString('fr-FR')} €/an</div>
-            <div style={{ fontSize: 10, opacity: 0.85 }}>coût complet : {roundTen(cur.totalCost).toLocaleString('fr-FR')} → {roundTen(tgt.totalCost).toLocaleString('fr-FR')} € <span style={{ opacity: 0.7 }}>ⓘ</span></div>
-          </div>
-          <div data-tip="" style={{ display: 'none', position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', background: '#1f2937', color: '#fff', padding: '6px 10px', borderRadius: 7, fontSize: 10, lineHeight: 1.4, width: 280, zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', pointerEvents: 'none', textAlign: 'left' }}>
-            Économie annuelle sur les coûts de fonctionnement (énergie + entretien) entre le scénario actuel et le scénario cible, hors investissement. C'est ce que vous économisez chaque année en dépenses courantes.
-          </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Bars */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -374,8 +416,24 @@ function BizCase({ curSc, tgtSc, curR, tgtR }: { curSc: Scenario; tgtSc: Scenari
             • <a href="https://www.primealaconversion.gouv.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Prime à la conversion</a> — mise au rebut d'un véhicule polluant<br />
             • <a href="https://www.service-public.fr/particuliers/vosdroits/F36828" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Leasing social</a> — VE à 100 €/mois pour les ménages modestes
           </>}><span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></FL><NI value={aidPct} onChange={v => setAidPct(Math.max(0, Math.min(90, v)))} suffix="%" step={5} w={40} /></div>
-        <div><FL>Inflation fossiles</FL><NI value={fInfl} onChange={v => setFInfl(Math.max(0, Math.min(15, v)))} suffix="%/an" step={1} w={36} /></div>
-        <div><FL>Inflation élec</FL><NI value={eInfl} onChange={v => setEInfl(Math.max(0, Math.min(10, v)))} suffix="%/an" step={1} w={36} /></div>
+        <div><FL>Inflation fossiles <Tip align="left" below text={<>
+            <strong>Que signifie +{fInfl}%/an ?</strong><br /><br />
+            Avec un diesel à 2,00 €/L aujourd'hui :<br />
+            • Dans 1 an : {(2 * Math.pow(1 + fInfl / 100, 1)).toFixed(2)} €/L<br />
+            • Dans 5 ans : {(2 * Math.pow(1 + fInfl / 100, 5)).toFixed(2)} €/L<br />
+            • Dans 10 ans : {(2 * Math.pow(1 + fInfl / 100, 10)).toFixed(2)} €/L<br /><br />
+            Avec un gaz à 0,12 €/kWh aujourd'hui :<br />
+            • Dans 5 ans : {(0.12 * Math.pow(1 + fInfl / 100, 5)).toFixed(3)} €/kWh<br />
+            • Dans 10 ans : {(0.12 * Math.pow(1 + fInfl / 100, 10)).toFixed(3)} €/kWh<br /><br />
+            <em>Plus l'inflation fossile est élevée, plus l'électrification devient rentable rapidement.</em>
+          </>}><span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></FL><NI value={fInfl} onChange={v => setFInfl(Math.max(0, Math.min(15, v)))} suffix="%/an" step={1} w={36} /></div>
+        <div><FL>Inflation élec <Tip align="left" below text={<>
+            <strong>Que signifie +{eInfl}%/an ?</strong><br /><br />
+            Avec une électricité à 0,20 €/kWh aujourd'hui :<br />
+            • Dans 5 ans : {(0.20 * Math.pow(1 + eInfl / 100, 5)).toFixed(3)} €/kWh<br />
+            • Dans 10 ans : {(0.20 * Math.pow(1 + eInfl / 100, 10)).toFixed(3)} €/kWh<br /><br />
+            <em>L'électricité a historiquement une inflation plus faible que les fossiles en France, grâce au nucléaire et aux ENR.</em>
+          </>}><span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></FL><NI value={eInfl} onChange={v => setEInfl(Math.max(0, Math.min(10, v)))} suffix="%/an" step={1} w={36} /></div>
       </div>
       <div style={{ marginBottom: 10, padding: 8, borderRadius: 7, background: '#fef2f2' }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', marginBottom: 4 }}>🏗️ Investissement année 1</div>
@@ -448,13 +506,19 @@ function Meth() {
         <strong>Périmètre :</strong> Cet outil couvre exclusivement les <strong>usages électrifiables</strong> du logement (chauffage, ECS, cuisson) et de la mobilité personnelle. Il ne constitue ni un bilan carbone complet, ni un scope 1/2 au sens du GHG Protocol.
         <br />👉 Bilan complet : <a href="https://nosgestesclimat.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', fontWeight: 600 }}>Nos Gestes Climat</a> (ADEME).
       </div>
-      <h3 style={h3s}>1. Logement (PCAF 2023)</h3>
+      <h3 style={h3s}>1. Logement (Base Carbone ADEME 2023)</h3>
       <div style={ps}>
         <strong>Comment ça marche ?</strong> Chaque classe DPE correspond à une consommation d'énergie en kWh/m²/an (ex : un DPE E ≈ 290 kWh/m²/an).
-        On multiplie cette valeur par la surface du logement pour obtenir la consommation totale, puis on la répartit entre les usages :
-        chauffage (67%), eau chaude (20%) et cuisson (13%) — moyennes ADEME.
+        Le DPE couvre <a href="https://activexpertise.fr/le-dpe-en-pratique-ce-que-mesurent-vraiment-les-5-postes/" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>5 postes</a> : chauffage, ECS, climatisation, éclairage et auxiliaires. Seuls le chauffage et l'ECS peuvent utiliser une énergie non-électrique (gaz, fioul, bois).
         <br /><br />
-        <strong>Émissions :</strong> Pour chaque usage, on multiplie les kWh consommés par le <em>facteur d'émission</em> (FE) de l'équipement choisi.
+        On prend <strong>90%</strong> de la consommation DPE (les 10% restants = climatisation, éclairage, auxiliaires, quasi toujours électriques) et on la répartit entre chauffage (77%) et eau chaude (23%) — ratios ADEME.
+        <br /><br />
+        <strong>Conversion énergie primaire → finale :</strong> Le DPE est exprimé en kWh d'<em>énergie primaire</em> (EP). Or nos facteurs d'émission et coûts s'appliquent à l'<em>énergie finale</em> (EF), c'est-à-dire ce que vous consommez réellement.
+        Le <a href="https://rt-re-batiment.developpement-durable.gouv.fr/faq-dpe-modification-du-facteur-de-conversion-en-a1021.html" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>facteur de conversion (DPE 2026)</a> est de 1,9 pour l'électricité et 1 pour gaz/fioul/bois. Concrètement, un logement électrique consomme ~47% de moins en énergie finale que ce que le DPE EP indique.
+        <br /><br />
+        La <strong>cuisson</strong> n'est pas incluse dans le DPE : elle est estimée séparément à environ 200 + 2×surface kWh/an (~420 kWh pour un 110m², cohérent avec ~200 kWh/personne/an ADEME).
+        <br /><br />
+        <strong>Émissions :</strong> Pour chaque usage, on multiplie les kWh d'énergie finale par le <em>facteur d'émission</em> (FE) de l'équipement choisi.
         Par exemple : 10 000 kWh × 0.227 kgCO₂/kWh (chaudière gaz) = 2 270 kgCO₂/an.
         <br />
         <strong>Coûts — ce qu'il y a derrière les chiffres :</strong>
@@ -530,7 +594,7 @@ function Meth() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 7, background: '#f0f0ff', border: '1px solid #c7c7ff', marginTop: 4 }}>
         <EcodexLogo size={28} />
         <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.4 }}>
-          FE fournis par <a href="https://getecodex.com" target="_blank" rel="noopener noreferrer" style={{ color: '#4856FF', fontWeight: 700, textDecoration: 'none' }}>Ecodex</a> (1M+ facteurs d'émission) via le <a href="https://getecodex.com/mcp" target="_blank" rel="noopener noreferrer" style={{ color: '#4856FF', fontWeight: 600, textDecoration: 'none' }}>protocole MCP</a>. Sources : PCAF, Base Carbone ADEME, EEA.
+          FE fournis par <a href="https://getecodex.com" target="_blank" rel="noopener noreferrer" style={{ color: '#4856FF', fontWeight: 700, textDecoration: 'none' }}>Ecodex</a> (1M+ facteurs d'émission) via le <a href="https://getecodex.com/mcp" target="_blank" rel="noopener noreferrer" style={{ color: '#4856FF', fontWeight: 600, textDecoration: 'none' }}>protocole MCP</a>. Source FE : Base Carbone ADEME.
         </div>
       </div>
     </div>
@@ -571,8 +635,12 @@ export default function App() {
           <>
             <PSel onSelect={selP} activeId={ap} />
             <div className="flex gap-2 flex-wrap">
-              <ScP title="Scénario actuel" emoji="📍" sc={cur} setSc={s => { setCur(s); setAp(null) }} accent="#ef4444" showWarn={false} />
-              <ScP title="Scénario cible" emoji="🎯" sc={tgt} setSc={s => { setTgt(s); setAp(null) }} accent="#10b981" showWarn={true} />
+              <ScP title="Scénario actuel" emoji="📍" sc={cur} setSc={s => { setCur(s); setTgt(prev => {
+                const curIdx = DPE_ORDER.indexOf(s.dpe as typeof DPE_ORDER[number])
+                const tgtIdx = DPE_ORDER.indexOf(prev.dpe as typeof DPE_ORDER[number])
+                return { ...prev, area: s.area, ...(tgtIdx > curIdx ? { dpe: s.dpe } : {}) }
+              }); setAp(null) }} accent="#ef4444" showWarn={false} />
+              <ScP title="Scénario cible" emoji="🎯" sc={tgt} setSc={s => { setTgt(s); setAp(null) }} accent="#10b981" showWarn={true} areaReadOnly maxDpe={cur.dpe} />
             </div>
           </>
         )}
