@@ -16,10 +16,19 @@ import {
 /* ── Ecodex Logo ── */
 function EcodexLogo({ size = 22 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 184 184" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="183.804" height="183.804" rx="34.68" fill="#4856FF" />
-      <path d="M57.07 47.97V35.24c0-1.69 1.37-3.07 3.07-3.07h34.06c17.96 0 32.53 14.56 32.53 32.53v2.38 2.22c0 17.96-14.56 32.53-32.53 32.53H60.14c-1.69 0-3.07-1.37-3.07-3.07V85.72c0-1.69 1.37-3.07 3.07-3.07h31.45c8.73 0 15.8-7.08 15.8-15.8 0-8.73-7.08-15.8-15.8-15.8H60.14c-1.69 0-3.07-1.37-3.07-3.07z" fill="white" />
-      <path d="M57.07 63.32c0-1.36 1.1-2.45 2.45-2.45h31c3.39 0 6.14 2.75 6.14 6.14s-2.75 6.14-6.14 6.14h-31c-1.36 0-2.45-1.1-2.45-2.45v-7.36z" fill="white" />
+    <svg width={size} height={size} viewBox="52 27 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="ecoGrad1" x1="57" y1="32" x2="127" y2="102" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#6B7CFF" />
+          <stop offset="100%" stopColor="#3B4AE0" />
+        </linearGradient>
+        <linearGradient id="ecoGrad2" x1="57" y1="50" x2="97" y2="80" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#9BA8FF" />
+          <stop offset="100%" stopColor="#5B6BFF" />
+        </linearGradient>
+      </defs>
+      <path d="M57.07 47.97V35.24c0-1.69 1.37-3.07 3.07-3.07h34.06c17.96 0 32.53 14.56 32.53 32.53v2.38 2.22c0 17.96-14.56 32.53-32.53 32.53H60.14c-1.69 0-3.07-1.37-3.07-3.07V85.72c0-1.69 1.37-3.07 3.07-3.07h31.45c8.73 0 15.8-7.08 15.8-15.8 0-8.73-7.08-15.8-15.8-15.8H60.14c-1.69 0-3.07-1.37-3.07-3.07z" fill="url(#ecoGrad1)" />
+      <path d="M57.07 63.32c0-1.36 1.1-2.45 2.45-2.45h31c3.39 0 6.14 2.75 6.14 6.14s-2.75 6.14-6.14 6.14h-31c-1.36 0-2.45-1.1-2.45-2.45v-7.36z" fill="url(#ecoGrad2)" />
     </svg>
   )
 }
@@ -483,8 +492,6 @@ export default function App() {
             <EcodexLogo size={20} />
             <span className="text-[11px] font-extrabold" style={{ color: '#4856FF' }}>Ecodex</span>
           </a>
-          <span className="text-[9px] text-gray-300">·</span>
-          <a href="https://getecodex.com/connect" target="_blank" rel="noopener noreferrer" className="text-[9px] text-gray-500 no-underline">via MCP</a>
         </div>
       </div>
     </div>
