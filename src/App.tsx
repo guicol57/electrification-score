@@ -106,9 +106,9 @@ function Tip({ text, children, align = 'center', interactive = false, below = fa
   )
 }
 
-function DPEBtn({ d, active, onClick, disabled = false }: { d: string; active: boolean; onClick: () => void; disabled?: boolean }) {
-  return (
-    <Tip text={disabled ? `DPE ${d} : non disponible (supérieur au scénario actuel)` : DPE_TIPS[d]}>
+function DPEBtn({ d, active, onClick, disabled = false, tip }: { d: string; active: boolean; onClick: () => void; disabled?: boolean; tip?: string | null }) {
+  const tipText = tip !== undefined ? tip : (disabled ? `DPE ${d} : non disponible (supérieur au scénario actuel)` : DPE_TIPS[d])
+  const btn = (
       <button onClick={disabled ? undefined : onClick} style={{
         width: 26, height: 26, borderRadius: 5,
         border: active ? '2px solid #1f2937' : '2px solid transparent',
@@ -116,8 +116,8 @@ function DPEBtn({ d, active, onClick, disabled = false }: { d: string; active: b
         cursor: disabled ? 'not-allowed' : 'pointer', transform: active ? 'scale(1.1)' : 'scale(1)', transition: 'all 0.15s',
         opacity: disabled ? 0.3 : 1,
       }}>{d}</button>
-    </Tip>
   )
+  return tipText ? <Tip text={tipText}>{btn}</Tip> : btn
 }
 
 /* ── Transport Row ── */
@@ -177,7 +177,8 @@ function ScP({ title, emoji, sc, setSc, accent, showWarn, areaReadOnly = false, 
           <div>
             <FL>DPE estimé — {computed.epPerM2} kWh/m²</FL>
             <div style={{ display: 'flex', gap: 2 }}>{Object.keys(DPE_COLORS).map(d =>
-              <DPEBtn key={d} d={d} active={d === computed.dpe} onClick={() => {}} disabled={d !== computed.dpe} />
+              <DPEBtn key={d} d={d} active={d === computed.dpe} onClick={() => {}} disabled={d !== computed.dpe}
+                tip={d === computed.dpe ? `${DPE_TIPS[d]} — Classe obtenue après travaux de rénovation et changement d'équipement.` : null} />
             )}</div>
           </div>
         )}
@@ -359,7 +360,7 @@ function Results({ cur, tgt }: { cur: AnnualResult; tgt: AnnualResult }) {
               <span>économie{ecoSmall ? ` · ${roundTen(cur.totalCost).toLocaleString('fr-FR')} → ${roundTen(tgt.totalCost).toLocaleString('fr-FR')} €` : ''} <span style={{ opacity: 0.5 }}>ⓘ</span></span>
             </div>
             <div data-tip="" style={{ display: 'none', position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', background: '#1f2937', color: '#fff', padding: '6px 10px', borderRadius: 7, fontSize: 10, lineHeight: 1.4, width: 280, zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', pointerEvents: 'none', textAlign: 'left' }}>
-              Économie annuelle sur les coûts de fonctionnement (énergie + entretien) entre le scénario actuel et le scénario cible, hors investissement. C'est ce que vous économisez chaque année en dépenses courantes.
+              Économie annuelle <strong>en année 1</strong> sur les coûts de fonctionnement (énergie + entretien), hors investissement. Les années suivantes, ce montant évolue selon l'inflation des énergies fossiles et de l'électricité. Voir l'onglet Business Case pour les projections.
             </div>
           </div>
         )
@@ -424,11 +425,10 @@ function BizCase({ curSc, tgtSc, curR, tgtR }: { curSc: Scenario; tgtSc: Scenari
   return (
     <div style={{ background: '#fff', borderRadius: 12, padding: '12px 10px', border: '2px solid #e5e7eb' }}>
       <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 800, color: '#1f2937' }}>💰 Business Case</h3>
-      <div style={{ padding: '8px 10px', borderRadius: 7, background: '#eff6ff', border: '1px solid #bfdbfe', marginBottom: 10, fontSize: 10, color: '#1e40af', lineHeight: 1.5 }}>
-        <strong>Comment lire cette page ?</strong> On compare le <strong>coût cumulé</strong> du scénario actuel (sans rien changer) vs. le scénario cible (après investissement).
-        Le scénario cible démarre avec l'investissement initial, mais ses coûts annuels sont plus faibles. L'année de <strong>bascule</strong> est le moment où le cumul cible passe en-dessous du cumul actuel : à partir de là, vous êtes « gagnant ».
-      </div>
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 10, padding: 8, borderRadius: 7, background: '#f9fafb' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+        <div style={{ padding: 8, borderRadius: 7, background: '#f9fafb' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', marginBottom: 6 }}>⚙️ Paramètres</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         <div><FL>Durée</FL><NI value={years} onChange={v => setYears(Math.max(3, Math.min(20, v)))} suffix="ans" step={1} w={40} /></div>
         <div><FL>Aides <Tip interactive align="left" below text={<>
             <strong>Aides à l'électrification en France :</strong><br /><br />
@@ -460,24 +460,38 @@ function BizCase({ curSc, tgtSc, curR, tgtR }: { curSc: Scenario; tgtSc: Scenari
             • Dans 10 ans : {(0.20 * Math.pow(1 + eInfl / 100, 10)).toFixed(3)} €/kWh<br /><br />
             <em>L'électricité a historiquement une inflation plus faible que les fossiles en France, grâce au nucléaire et aux ENR.</em>
           </>}><span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></FL><NI value={eInfl} onChange={v => setEInfl(Math.max(0, Math.min(10, v)))} suffix="%/an" step={1} w={46} /></div>
-      </div>
-      <div style={{ marginBottom: 10, padding: 8, borderRadius: 7, background: '#fef2f2' }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', marginBottom: 4 }}>🏗️ Investissement année 1</div>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <tbody>
-            {inv.renoCost > 0 && <tr><td style={tdS}>Rénovation ({(tgtSc.renovations || []).length} poste{(tgtSc.renovations || []).length > 1 ? 's' : ''}, {inv.renoPerM2}€/m²)</td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.renoCost).toLocaleString('fr-FR')} €</td></tr>}
-            {inv.heatingDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût du nouvel équipement de chauffage par rapport à la valeur résiduelle (30%) de l'actuel." align="left">Δ Chauffage <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.heatingDelta).toLocaleString('fr-FR')} €</td></tr>}
-            {inv.hwDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût du nouvel équipement d'eau chaude par rapport à la valeur résiduelle (30%) de l'actuel." align="left">Δ ECS <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.hwDelta).toLocaleString('fr-FR')} €</td></tr>}
-            {inv.cookDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût du nouvel équipement de cuisson par rapport à la valeur résiduelle (30%) de l'actuel." align="left">Δ Cuisson <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.cookDelta).toLocaleString('fr-FR')} €</td></tr>}
-            {inv.vehicleDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût d'achat du(des) véhicule(s) cible par rapport au(x) véhicule(s) actuel(s)." align="left">Δ Véhicule(s) <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.vehicleDelta).toLocaleString('fr-FR')} €</td></tr>}
-            <tr><td style={thS}>Total brut</td><td style={{ ...thS, textAlign: 'right' }}>{roundTen(inv.totalInvestment).toLocaleString('fr-FR')} €</td></tr>
-            <tr><td style={{ ...tdS, color: '#059669' }}>Aides ({aidPct}%)</td><td style={{ ...tdS, textAlign: 'right', color: '#059669', fontWeight: 600 }}>-{roundTen(aid).toLocaleString('fr-FR')} €</td></tr>
-            <tr><td style={{ ...thS, fontWeight: 800 }}>Reste à charge</td><td style={{ ...thS, textAlign: 'right', fontWeight: 800 }}>{roundTen(net).toLocaleString('fr-FR')} €</td></tr>
-          </tbody>
-        </table>
+          </div>
+        </div>
+        <div style={{ padding: '8px 10px', borderRadius: 7, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 10, color: '#1e40af', lineHeight: 1.5 }}>
+          <strong>Comment lire les résultats ?</strong><br /><br />
+          On compare le <strong>coût cumulé</strong> du scénario actuel (sans rien changer) vs. le scénario cible (après investissement).
+          <br /><br />
+          L'année de <strong>bascule</strong> est le moment où le cumul cible passe en-dessous du cumul actuel : à partir de là, vous êtes « gagnant ».
+        </div>
+        <div style={{ padding: 8, borderRadius: 7, background: '#fef2f2' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', marginBottom: 4 }}>🏗️ Investissement année 1</div>
+          <table style={{ borderCollapse: 'collapse' }}>
+            <tbody>
+              {inv.renoCost > 0 && <tr><td style={tdS}>Rénovation ({(tgtSc.renovations || []).length} poste{(tgtSc.renovations || []).length > 1 ? 's' : ''}, {inv.renoPerM2}€/m²)</td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600, paddingLeft: 24 }}>{roundTen(inv.renoCost).toLocaleString('fr-FR')} €</td></tr>}
+              {inv.heatingDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût du nouvel équipement de chauffage par rapport à la valeur résiduelle (30%) de l'actuel." align="left">Δ Chauffage <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600, paddingLeft: 24 }}>{roundTen(inv.heatingDelta).toLocaleString('fr-FR')} €</td></tr>}
+              {inv.hwDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût du nouvel équipement d'eau chaude par rapport à la valeur résiduelle (30%) de l'actuel." align="left">Δ ECS <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600, paddingLeft: 24 }}>{roundTen(inv.hwDelta).toLocaleString('fr-FR')} €</td></tr>}
+              {inv.cookDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût du nouvel équipement de cuisson par rapport à la valeur résiduelle (30%) de l'actuel." align="left">Δ Cuisson <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600, paddingLeft: 24 }}>{roundTen(inv.cookDelta).toLocaleString('fr-FR')} €</td></tr>}
+              {inv.vehicleDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût d'achat du(des) véhicule(s) cible par rapport au(x) véhicule(s) actuel(s)." align="left">Δ Véhicule(s) <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600, paddingLeft: 24 }}>{roundTen(inv.vehicleDelta).toLocaleString('fr-FR')} €</td></tr>}
+              <tr><td style={thS}>Total brut</td><td style={{ ...thS, textAlign: 'right', paddingLeft: 24 }}>{roundTen(inv.totalInvestment).toLocaleString('fr-FR')} €</td></tr>
+              <tr><td style={{ ...tdS, color: '#059669' }}>Aides ({aidPct}%)</td><td style={{ ...tdS, textAlign: 'right', color: '#059669', fontWeight: 600, paddingLeft: 24 }}>-{roundTen(aid).toLocaleString('fr-FR')} €</td></tr>
+              <tr><td style={{ ...thS, fontWeight: 800 }}>Reste à charge</td><td style={{ ...thS, textAlign: 'right', fontWeight: 800, paddingLeft: 24 }}>{roundTen(net).toLocaleString('fr-FR')} €</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginBottom: 10 }}>
-        <Tip text="Économie annuelle sur les coûts de fonctionnement (énergie + entretien) entre le scénario actuel et le scénario cible, hors investissement. C'est ce que vous économisez chaque année en dépenses courantes.">
+        <Tip text={(() => {
+          const savY = (y: number) => {
+            const fi = Math.pow(1 + fInfl / 100, y - 1), ei = Math.pow(1 + eInfl / 100, y - 1), oi = Math.pow(1.02, y - 1)
+            return roundTen(cB * (cF * fi + cE * ei + (1 - cF - cE) * oi) - tB * (tF * fi + tE * ei + (1 - tF - tE) * oi))
+          }
+          return <>Économie <strong>en année 1</strong> sur les coûts de fonctionnement (énergie + entretien), hors investissement.<br /><br />Les années suivantes, ce montant évolue selon l'inflation :<br />• An 5 : <strong>{savY(5) > 0 ? '+' : ''}{savY(5).toLocaleString('fr-FR')} €/an</strong><br />• An 10 : <strong>{savY(10) > 0 ? '+' : ''}{savY(10).toLocaleString('fr-FR')} €/an</strong></>
+        })()}>
           <div style={{ padding: 6, borderRadius: 7, background: '#f0fdf4', textAlign: 'center', cursor: 'help' }}>
             <div style={{ fontSize: 16, fontWeight: 900, color: '#059669' }}>{roundTen(cB - tB) > 0 ? '+' : ''}{roundTen(cB - tB).toLocaleString('fr-FR')} €</div>
             <div style={{ fontSize: 8, color: '#6b7280' }}>éco./an (an 1) <span style={{ opacity: 0.5 }}>ⓘ</span></div>
