@@ -5,11 +5,11 @@ import {
 } from 'recharts'
 import {
   HEATING, HOT_WATER, COOKING, DPE_COLORS, DPE_TIPS, DPE_ORDER,
-  RENOVATION_COST_PER_CLASS, TRANSPORT_MODES, PROFILES,
+  RENOVATION_WORKS, TRANSPORT_MODES, PROFILES,
   ELEC_SCORE_TIPS, FOSSIL_SCORE_TIPS,
 } from './data'
 import {
-  computeAnnual, computeInvestment, roundTen,
+  computeAnnual, computeInvestment, computeTargetDPE, roundTen,
   type Scenario, type AnnualResult,
 } from './utils/compute'
 
@@ -149,12 +149,14 @@ function TRow({ t, i, onChange, onRemove }: {
 }
 
 /* ── Scenario Panel ── */
-function ScP({ title, emoji, sc, setSc, accent, showWarn, areaReadOnly = false, maxDpe }: {
-  title: string; emoji: string; sc: Scenario; setSc: (s: Scenario) => void; accent: string; showWarn: boolean; areaReadOnly?: boolean; maxDpe?: string
+function ScP({ title, emoji, sc, setSc, accent, showWarn, areaReadOnly = false, isTarget = false, curDpe, curHeating, curHotWater }: {
+  title: string; emoji: string; sc: Scenario; setSc: (s: Scenario) => void; accent: string; showWarn: boolean; areaReadOnly?: boolean
+  isTarget?: boolean; curDpe?: string; curHeating?: string; curHotWater?: string
 }) {
   const uT = (i: number, k: string, v: any) => {
     const ts = [...sc.transports]; ts[i] = { ...ts[i], [k]: v }; setSc({ ...sc, transports: ts })
   }
+  const computed = isTarget && curDpe ? computeTargetDPE(curDpe, curHeating!, curHotWater!, sc.heating, sc.hotWater, sc.renovations || []) : null
   return (
     <div style={{ background: '#fff', borderRadius: 12, padding: '12px 10px', border: `2px solid ${accent}22`, flex: 1, minWidth: 290 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, paddingBottom: 7, borderBottom: `2px solid ${accent}22` }}>
@@ -167,14 +169,38 @@ function ScP({ title, emoji, sc, setSc, accent, showWarn, areaReadOnly = false, 
           ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '7px 8px', borderRadius: 7, border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: 12, color: '#6b7280', width: 58 }}>{sc.area} <span style={{ fontSize: 10 }}>m²</span></span>
           : <NI value={sc.area} onChange={v => setSc({ ...sc, area: v })} suffix="m²" step={5} w={58} />
         }</div>
-        <div><FL>DPE (survolez)</FL><div style={{ display: 'flex', gap: 2 }}>{Object.keys(DPE_COLORS).map(d => {
-          const maxIdx = maxDpe ? DPE_ORDER.indexOf(maxDpe as typeof DPE_ORDER[number]) : -1
-          const dIdx = DPE_ORDER.indexOf(d as typeof DPE_ORDER[number])
-          const disabled = maxIdx >= 0 && dIdx > maxIdx
-          return <DPEBtn key={d} d={d} active={sc.dpe === d} onClick={() => setSc({ ...sc, dpe: d })} disabled={disabled} />
-        })}</div></div>
+        {!isTarget ? (
+          <div><FL>DPE (survolez)</FL><div style={{ display: 'flex', gap: 2 }}>{Object.keys(DPE_COLORS).map(d =>
+            <DPEBtn key={d} d={d} active={sc.dpe === d} onClick={() => setSc({ ...sc, dpe: d })} />
+          )}</div></div>
+        ) : computed && (
+          <div>
+            <FL>DPE estimé — {computed.epPerM2} kWh/m²</FL>
+            <div style={{ display: 'flex', gap: 2 }}>{Object.keys(DPE_COLORS).map(d =>
+              <DPEBtn key={d} d={d} active={d === computed.dpe} onClick={() => {}} disabled={d !== computed.dpe} />
+            )}</div>
+          </div>
+        )}
       </div>
-      {showWarn && ['D', 'E', 'F', 'G'].includes(sc.dpe) && (
+      {isTarget && (
+        <div style={{ marginTop: 6 }}>
+          <FL>Travaux de rénovation</FL>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 10px', marginTop: 2 }}>
+            {RENOVATION_WORKS.map(w => (
+              <label key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, cursor: 'pointer', padding: '2px 0' }}>
+                <input type="checkbox" checked={(sc.renovations || []).includes(w.id)}
+                  onChange={e => {
+                    const renos = sc.renovations || []
+                    setSc({ ...sc, renovations: e.target.checked ? [...renos, w.id] : renos.filter(r => r !== w.id) })
+                  }} />
+                <span>{w.label}</span>
+                <span style={{ fontSize: 9, color: '#9ca3af' }}>(-{Math.round(w.reduction * 100)}%, {w.costPerM2}€/m²)</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+      {showWarn && !isTarget && ['D', 'E', 'F', 'G'].includes(sc.dpe) && (
         <div style={{ marginTop: 4, padding: '4px 7px', borderRadius: 5, background: '#fef3c7', border: '1px solid #f59e0b', fontSize: 10, color: '#92400e', lineHeight: 1.3 }}>
           💡 DPE {sc.dpe} : il est recommandé d'améliorer l'isolation avant de changer d'équipement.
         </div>
@@ -415,7 +441,7 @@ function BizCase({ curSc, tgtSc, curR, tgtR }: { curSc: Scenario; tgtSc: Scenari
             • <a href="https://www.primealaconversion.gouv.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Bonus écologique</a> — jusqu'à 7 000 € pour un véhicule électrique<br />
             • <a href="https://www.primealaconversion.gouv.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Prime à la conversion</a> — mise au rebut d'un véhicule polluant<br />
             • <a href="https://www.service-public.fr/particuliers/vosdroits/F36828" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Leasing social</a> — VE à 100 €/mois pour les ménages modestes
-          </>}><span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></FL><NI value={aidPct} onChange={v => setAidPct(Math.max(0, Math.min(90, v)))} suffix="%" step={5} w={40} /></div>
+          </>}><span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></FL><NI value={aidPct} onChange={v => setAidPct(Math.max(0, Math.min(90, v)))} suffix="%" step={5} w={46} /></div>
         <div><FL>Inflation fossiles <Tip align="left" below text={<>
             <strong>Que signifie +{fInfl}%/an ?</strong><br /><br />
             Avec un diesel à 2,00 €/L aujourd'hui :<br />
@@ -426,20 +452,20 @@ function BizCase({ curSc, tgtSc, curR, tgtR }: { curSc: Scenario; tgtSc: Scenari
             • Dans 5 ans : {(0.12 * Math.pow(1 + fInfl / 100, 5)).toFixed(3)} €/kWh<br />
             • Dans 10 ans : {(0.12 * Math.pow(1 + fInfl / 100, 10)).toFixed(3)} €/kWh<br /><br />
             <em>Plus l'inflation fossile est élevée, plus l'électrification devient rentable rapidement.</em>
-          </>}><span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></FL><NI value={fInfl} onChange={v => setFInfl(Math.max(0, Math.min(15, v)))} suffix="%/an" step={1} w={36} /></div>
+          </>}><span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></FL><NI value={fInfl} onChange={v => setFInfl(Math.max(0, Math.min(15, v)))} suffix="%/an" step={1} w={46} /></div>
         <div><FL>Inflation élec <Tip align="left" below text={<>
             <strong>Que signifie +{eInfl}%/an ?</strong><br /><br />
             Avec une électricité à 0,20 €/kWh aujourd'hui :<br />
             • Dans 5 ans : {(0.20 * Math.pow(1 + eInfl / 100, 5)).toFixed(3)} €/kWh<br />
             • Dans 10 ans : {(0.20 * Math.pow(1 + eInfl / 100, 10)).toFixed(3)} €/kWh<br /><br />
             <em>L'électricité a historiquement une inflation plus faible que les fossiles en France, grâce au nucléaire et aux ENR.</em>
-          </>}><span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></FL><NI value={eInfl} onChange={v => setEInfl(Math.max(0, Math.min(10, v)))} suffix="%/an" step={1} w={36} /></div>
+          </>}><span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></FL><NI value={eInfl} onChange={v => setEInfl(Math.max(0, Math.min(10, v)))} suffix="%/an" step={1} w={46} /></div>
       </div>
       <div style={{ marginBottom: 10, padding: 8, borderRadius: 7, background: '#fef2f2' }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', marginBottom: 4 }}>🏗️ Investissement année 1</div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            {inv.dpeJump > 0 && <tr><td style={tdS}>Rénovation ({inv.dpeJump} cl., {inv.renoPerM2}€/m²)</td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.renoCost).toLocaleString('fr-FR')} €</td></tr>}
+            {inv.renoCost > 0 && <tr><td style={tdS}>Rénovation ({(tgtSc.renovations || []).length} poste{(tgtSc.renovations || []).length > 1 ? 's' : ''}, {inv.renoPerM2}€/m²)</td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.renoCost).toLocaleString('fr-FR')} €</td></tr>}
             {inv.heatingDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût du nouvel équipement de chauffage par rapport à la valeur résiduelle (30%) de l'actuel." align="left">Δ Chauffage <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.heatingDelta).toLocaleString('fr-FR')} €</td></tr>}
             {inv.hwDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût du nouvel équipement d'eau chaude par rapport à la valeur résiduelle (30%) de l'actuel." align="left">Δ ECS <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.hwDelta).toLocaleString('fr-FR')} €</td></tr>}
             {inv.cookDelta > 0 && <tr><td style={tdS}><Tip text="Surcoût du nouvel équipement de cuisson par rapport à la valeur résiduelle (30%) de l'actuel." align="left">Δ Cuisson <span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></td><td style={{ ...tdS, textAlign: 'right', fontWeight: 600 }}>{roundTen(inv.cookDelta).toLocaleString('fr-FR')} €</td></tr>}
@@ -576,18 +602,20 @@ function Meth() {
       <table style={ts}><thead><tr><th style={th}>Mode</th><th style={th}>kgCO₂/pass.km</th><th style={th}>CAPEX (€/pass.km)</th><th style={th}>OPEX (€/pass.km)</th><th style={th}>Tot (€/pass.km)</th></tr></thead>
         <tbody>{TRANSPORT_MODES.map(t => <tr key={t.id}><td style={td}>{t.label}</td><td style={td}>{t.ef}</td><td style={td}>{t.capex.toFixed(2)}</td><td style={td}>{t.opex.toFixed(2)}</td><td style={{ ...td, fontWeight: 600 }}>{(t.capex + t.opex).toFixed(2)}</td></tr>)}</tbody>
       </table>
-      <h3 style={h3s}>3. Rénovation (€/m²)</h3>
-      <p style={{ fontSize: 10, color: '#6b7280', margin: '0 0 4px', lineHeight: 1.4 }}>Source : <a href="https://www.effy.fr/travaux-energetique/renovation-globale/prix" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>Effy — Prix rénovation globale</a>, moyennes France 2024</p>
-      <table style={ts}><thead><tr><th style={th}>Saut</th><th style={th}>€/m²</th><th style={th}>Travaux types</th></tr></thead>
+      <h3 style={h3s}>3. Rénovation et DPE cible</h3>
+      <div style={ps}>
+        <strong>Comment est calculé le DPE cible ?</strong> Le DPE du scénario cible est <strong>calculé automatiquement</strong> à partir de deux facteurs :
+        <br /><br />
+        <strong>1. Travaux d'isolation</strong> — chaque poste réduit les besoins de chauffage d'un % (ADEME). Les réductions se cumulent de manière multiplicative.
+        <br />
+        <strong>2. Changement de système</strong> — le ratio d'efficacité EP entre ancien et nouveau système. Ex : passer d'une chaudière gaz (1 kWh EP/kWh utile) à une PAC (COP 3, facteur EP 1.9 → 0.63 kWh EP/kWh utile) réduit la conso EP de ~37%.
+        <br /><br />
+        <strong>Formule :</strong> EP<sub>cible</sub> = EP<sub>actuel</sub> × (1-r₁) × (1-r₂) × ... × (EP<sub>cible</sub>/COP<sub>cible</sub>) / (EP<sub>actuel</sub>/COP<sub>actuel</sub>)
+      </div>
+      <p style={{ fontSize: 10, color: '#6b7280', margin: '0 0 4px', lineHeight: 1.4 }}>Sources : <a href="https://www.calculeo.fr/subventions/isolation-thermique/prix" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>Calculeo</a>, <a href="https://www.effy.fr/travaux-energetique/renovation-globale/prix" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>Effy</a>, ADEME (moyennes France 2024)</p>
+      <table style={ts}><thead><tr><th style={th}>Poste</th><th style={th}>Réduction</th><th style={th}>€/m² plancher</th></tr></thead>
         <tbody>
-          {([
-            [1, 'Travaux légers : calorifugeage, VMC simple flux, joints fenêtres'],
-            [2, 'Isolation ciblée : combles ou plancher bas'],
-            [3, 'Isolation intermédiaire : combles + murs ou toiture + VMC double flux'],
-            [4, 'Isolation poussée : murs + toiture + plancher bas'],
-            [5, 'Isolation lourde : murs + toiture + sols + remplacement menuiseries'],
-            [6, 'Rénovation globale BBC : reprise totale de l\'enveloppe thermique (murs, toiture, sols, menuiseries, ventilation)'],
-          ] as [number, string][]).map(([k, desc]) => <tr key={k}><td style={td}>{k} cl.</td><td style={td}>{RENOVATION_COST_PER_CLASS[k]}</td><td style={{ ...td, fontSize: 9, color: '#6b7280' }}>{desc}</td></tr>)}
+          {RENOVATION_WORKS.map(w => <tr key={w.id}><td style={td}>{w.label}</td><td style={td}>-{Math.round(w.reduction * 100)}%</td><td style={td}>{w.costPerM2}</td></tr>)}
         </tbody>
       </table>
       <h3 style={h3s}>4. Sources</h3>
@@ -609,8 +637,15 @@ export default function App() {
   const [ap, setAp] = useState<string | null>(PROFILES[1].id)
 
   const selP = (p: typeof PROFILES[0]) => { setCur({ ...p.cur }); setTgt({ ...p.tgt }); setAp(p.id) }
+
+  // Compute effective target scenario with auto-computed DPE
+  const effectiveTgt = useMemo(() => {
+    const { dpe } = computeTargetDPE(cur.dpe, cur.heating, cur.hotWater, tgt.heating, tgt.hotWater, tgt.renovations || [])
+    return { ...tgt, dpe }
+  }, [cur.dpe, cur.heating, cur.hotWater, tgt])
+
   const cR = useMemo(() => computeAnnual(cur), [cur])
-  const tR = useMemo(() => computeAnnual(tgt), [tgt])
+  const tR = useMemo(() => computeAnnual(effectiveTgt), [effectiveTgt])
 
   return (
     <div className="min-h-screen p-2.5 font-sans">
@@ -635,17 +670,13 @@ export default function App() {
           <>
             <PSel onSelect={selP} activeId={ap} />
             <div className="flex gap-2 flex-wrap">
-              <ScP title="Scénario actuel" emoji="📍" sc={cur} setSc={s => { setCur(s); setTgt(prev => {
-                const curIdx = DPE_ORDER.indexOf(s.dpe as typeof DPE_ORDER[number])
-                const tgtIdx = DPE_ORDER.indexOf(prev.dpe as typeof DPE_ORDER[number])
-                return { ...prev, area: s.area, ...(tgtIdx > curIdx ? { dpe: s.dpe } : {}) }
-              }); setAp(null) }} accent="#ef4444" showWarn={false} />
-              <ScP title="Scénario cible" emoji="🎯" sc={tgt} setSc={s => { setTgt(s); setAp(null) }} accent="#10b981" showWarn={true} areaReadOnly maxDpe={cur.dpe} />
+              <ScP title="Scénario actuel" emoji="📍" sc={cur} setSc={s => { setCur(s); setTgt(prev => ({ ...prev, area: s.area })); setAp(null) }} accent="#ef4444" showWarn={true} />
+              <ScP title="Scénario cible" emoji="🎯" sc={tgt} setSc={s => { setTgt(s); setAp(null) }} accent="#10b981" showWarn={false} areaReadOnly isTarget curDpe={cur.dpe} curHeating={cur.heating} curHotWater={cur.hotWater} />
             </div>
           </>
         )}
         {tab === 'results' && <Results cur={cR} tgt={tR} />}
-        {tab === 'biz' && <BizCase curSc={cur} tgtSc={tgt} curR={cR} tgtR={tR} />}
+        {tab === 'biz' && <BizCase curSc={cur} tgtSc={effectiveTgt} curR={cR} tgtR={tR} />}
         {tab === 'method' && <Meth />}
       </div>
 

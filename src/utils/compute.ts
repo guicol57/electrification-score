@@ -1,4 +1,4 @@
-import { HEATING, HOT_WATER, COOKING, ENERGY_SHARES, DPE_USEFUL_SHARE, EP_TO_EF_ELEC, DPE_KWH, DPE_ORDER, RENOVATION_COST_PER_CLASS, cookingKWh } from '../data/housing'
+import { HEATING, HOT_WATER, COOKING, ENERGY_SHARES, DPE_USEFUL_SHARE, EP_TO_EF_ELEC, DPE_KWH, DPE_ORDER, RENOVATION_WORKS, epToDpe, cookingKWh } from '../data/housing'
 import { TRANSPORT_MODES } from '../data/transport'
 import type { HousingEquipment } from '../data/housing'
 import type { TransportMode } from '../data/transport'
@@ -19,6 +19,7 @@ export interface Scenario {
   hotWater: string
   cooking: string
   transports: TransportEntry[]
+  renovations?: string[]
 }
 
 export interface ScoreGrade {
@@ -80,6 +81,37 @@ export function getFossilScore(pct: number): ScoreGrade {
 
 export function roundTen(v: number): number {
   return Math.round(v / 10) * 10
+}
+
+// ---- Target DPE computation ----
+
+export function computeTargetDPE(
+  curDpe: string, curHeating: string, curHotWater: string,
+  tgtHeating: string, tgtHotWater: string, renovations: string[]
+): { epPerM2: number; dpe: string } {
+  const curEP = DPE_KWH[curDpe] || 230
+
+  // 1. Insulation reduction factor (multiplicative)
+  const insulationFactor = RENOVATION_WORKS
+    .filter(w => renovations.includes(w.id))
+    .reduce((acc, w) => acc * (1 - w.reduction), 1.0)
+
+  // 2. Equipment EP ratio (weighted by heating/ECS shares)
+  const curHt = HEATING.find(h => h.id === curHeating)
+  const curHw = HOT_WATER.find(h => h.id === curHotWater)
+  const tgtHt = HEATING.find(h => h.id === tgtHeating)
+  const tgtHw = HOT_WATER.find(h => h.id === tgtHotWater)
+
+  const curWeightedEP = ENERGY_SHARES.heating * (curHt?.epPerUseful ?? 1) + ENERGY_SHARES.hotWater * (curHw?.epPerUseful ?? 1)
+  const tgtWeightedEP = ENERGY_SHARES.heating * (tgtHt?.epPerUseful ?? 1) + ENERGY_SHARES.hotWater * (tgtHw?.epPerUseful ?? 1)
+  const equipmentRatio = curWeightedEP > 0 ? tgtWeightedEP / curWeightedEP : 1
+
+  // 3. EP_target = EP_useful × insulation × equipment + EP_other (unchanged)
+  const usefulEP = curEP * DPE_USEFUL_SHARE * insulationFactor * equipmentRatio
+  const otherEP = curEP * (1 - DPE_USEFUL_SHARE)
+  const epPerM2 = Math.round(usefulEP + otherEP)
+
+  return { epPerM2, dpe: epToDpe(epPerM2) }
 }
 
 // ---- Core computation ----
@@ -144,11 +176,14 @@ export function computeAnnual(sc: Scenario): AnnualResult {
 }
 
 export function computeInvestment(curSc: Scenario, tgtSc: Scenario): InvestmentResult {
+  // Renovation cost from selected works
+  const selectedWorks = RENOVATION_WORKS.filter(w => (tgtSc.renovations || []).includes(w.id))
+  const renoPerM2 = selectedWorks.reduce((sum, w) => sum + w.costPerM2, 0)
+  const renoCost = renoPerM2 * tgtSc.area
+
   const curIdx = DPE_ORDER.indexOf(curSc.dpe as typeof DPE_ORDER[number])
   const tgtIdx = DPE_ORDER.indexOf(tgtSc.dpe as typeof DPE_ORDER[number])
   const dpeJump = Math.max(0, curIdx - tgtIdx)
-  const renoPerM2 = dpeJump > 0 ? (RENOVATION_COST_PER_CLASS[Math.min(dpeJump, 6)] || 700) : 0
-  const renoCost = renoPerM2 * tgtSc.area
 
   const findH = (id: string) => HEATING.find(t => t.id === id)
   const findW = (id: string) => HOT_WATER.find(t => t.id === id)
