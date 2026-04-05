@@ -170,7 +170,7 @@ function ScP({ title, emoji, sc, setSc, accent, showWarn, areaReadOnly = false, 
           : <NI value={sc.area} onChange={v => setSc({ ...sc, area: v })} suffix="m²" step={5} w={58} />
         }</div>
         {!isTarget ? (
-          <div><FL>DPE (survolez)</FL><div style={{ display: 'flex', gap: 2 }}>{Object.keys(DPE_COLORS).map(d =>
+          <div><FL>DPE <Tip text="Le Diagnostic de Performance Énergétique (DPE) est un outil réglementaire qui évalue la performance énergétique d'un bâtiment de A (très performant) à G (passoire thermique). Il dépend principalement du niveau d'isolation et du système de chauffage. Vous pouvez le trouver sur votre bail, acte de vente, ou sur l'annonce immobilière." below><span style={{ opacity: 0.5, cursor: 'help' }}>ⓘ</span></Tip></FL><div style={{ display: 'flex', gap: 2 }}>{Object.keys(DPE_COLORS).map(d =>
             <DPEBtn key={d} d={d} active={sc.dpe === d} onClick={() => setSc({ ...sc, dpe: d })} />
           )}</div></div>
         ) : computed && (
@@ -186,7 +186,7 @@ function ScP({ title, emoji, sc, setSc, accent, showWarn, areaReadOnly = false, 
       {isTarget && (
         <div style={{ marginTop: 6 }}>
           <FL>Travaux de rénovation</FL>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 10px', marginTop: 2 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2px 10px', marginTop: 2 }}>
             {RENOVATION_WORKS.map(w => (
               <label key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, cursor: 'pointer', padding: '2px 0' }}>
                 <input type="checkbox" checked={(sc.renovations || []).includes(w.id)}
@@ -392,7 +392,7 @@ function Results({ cur, tgt }: { cur: AnnualResult; tgt: AnnualResult }) {
 
 /* ── Business Case ── */
 function BizCase({ curSc, tgtSc, curR, tgtR }: { curSc: Scenario; tgtSc: Scenario; curR: AnnualResult; tgtR: AnnualResult }) {
-  const [years, setYears] = useState(10)
+  const [years, setYears] = useState(15)
   const [aidPct, setAidPct] = useState(40)
   const [fInfl, setFInfl] = useState(5)
   const [eInfl, setEInfl] = useState(2)
@@ -425,7 +425,7 @@ function BizCase({ curSc, tgtSc, curR, tgtR }: { curSc: Scenario; tgtSc: Scenari
   return (
     <div style={{ background: '#fff', borderRadius: 12, padding: '12px 10px', border: '2px solid #e5e7eb' }}>
       <h3 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 800, color: '#1f2937' }}>💰 Business Case</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8, marginBottom: 8 }}>
         <div style={{ padding: 8, borderRadius: 7, background: '#f9fafb' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', marginBottom: 6 }}>⚙️ Paramètres</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
@@ -484,7 +484,7 @@ function BizCase({ curSc, tgtSc, curR, tgtR }: { curSc: Scenario; tgtSc: Scenari
           </table>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginBottom: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 5, marginBottom: 10 }}>
         <Tip text={(() => {
           const savY = (y: number) => {
             const fi = Math.pow(1 + fInfl / 100, y - 1), ei = Math.pow(1 + eInfl / 100, y - 1), oi = Math.pow(1.02, y - 1)
@@ -662,7 +662,7 @@ export default function App() {
   const tR = useMemo(() => computeAnnual(effectiveTgt), [effectiveTgt])
 
   return (
-    <div className="min-h-screen p-2.5 font-sans">
+    <div className="min-h-screen p-2.5 font-sans" style={{ overflowX: 'hidden' }}>
       <div style={{ textAlign: 'center', marginBottom: 10, maxWidth: 600, margin: '0 auto 10px' }}>
         <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-400 text-[9px] font-semibold text-amber-800 mb-1.5">
           ⚡ Crise énergétique — Évaluez votre exposition aux fossiles
@@ -682,6 +682,9 @@ export default function App() {
       <div className="max-w-7xl mx-auto">
         {tab === 'inputs' && (
           <>
+            <div style={{ padding: '8px 10px', borderRadius: 7, background: '#f0fdf4', border: '1px solid #bbf7d0', marginBottom: 8, fontSize: 10, color: '#166534', lineHeight: 1.5 }}>
+              <strong>Comment utiliser ce simulateur ?</strong> Commencez par choisir un profil type ou renseignez manuellement votre <strong>scénario actuel</strong> (logement, DPE, chauffage, véhicules). Puis définissez votre <strong>scénario cible</strong> en sélectionnant des travaux de rénovation et de nouveaux équipements. Les onglets Résultats et Business Case vous montreront les gains en émissions, coûts et retour sur investissement.
+            </div>
             <PSel onSelect={selP} activeId={ap} />
             <div className="flex gap-2 flex-wrap">
               <ScP title="Scénario actuel" emoji="📍" sc={cur} setSc={s => { setCur(s); setTgt(prev => ({ ...prev, area: s.area })); setAp(null) }} accent="#ef4444" showWarn={true} />
