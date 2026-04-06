@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RTooltip, Legend, ResponsiveContainer, ReferenceLine,
@@ -649,6 +649,14 @@ export default function App() {
   const [tgt, setTgt] = useState<Scenario>(PROFILES[1].tgt)
   const [tab, setTab] = useState('inputs')
   const [ap, setAp] = useState<string | null>(PROFILES[1].id)
+  const [visits, setVisits] = useState(0)
+
+  useEffect(() => {
+    fetch('https://scoreelec.goatcounter.com/counter//count.json')
+      .then(r => r.json())
+      .then(d => { if (d?.count) setVisits(parseInt(d.count.replace(/\s/g, ''), 10) || 0) })
+      .catch(() => {})
+  }, [])
 
   const selP = (p: typeof PROFILES[0]) => { setCur({ ...p.cur }); setTgt({ ...p.tgt }); setAp(p.id) }
 
@@ -699,6 +707,11 @@ export default function App() {
 
       {/* Footer */}
       <div className="text-center mt-4 pt-2.5 border-t border-gray-200">
+        {visits > 0 && (
+          <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 4 }}>
+            <strong style={{ color: '#059669' }}>{visits.toLocaleString('fr-FR')}</strong> simulations réalisées sur Mon Score d'Électrification
+          </div>
+        )}
         <div className="inline-flex items-center gap-1.5">
           <span className="text-[9px] text-gray-400">Powered by</span>
           <a href="https://getecodex.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 no-underline">
