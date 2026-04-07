@@ -652,6 +652,12 @@ export default function App() {
   const [visits, setVisits] = useState(0)
 
   useEffect(() => {
+    // Send visit hit directly (no external script, adblocker-proof)
+    if (window.location.hostname !== 'localhost') {
+      const img = new Image()
+      img.src = `https://scoreelec.goatcounter.com/count?p=${encodeURIComponent(window.location.pathname)}&t=${encodeURIComponent(document.title)}&r=${encodeURIComponent(document.referrer)}`
+    }
+    // Fetch visit count for display
     fetch('https://scoreelec.goatcounter.com/counter//count.json')
       .then(r => r.json())
       .then(d => { if (d?.count) setVisits(parseInt(d.count.replace(/\s/g, ''), 10) || 0) })
