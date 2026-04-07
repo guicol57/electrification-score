@@ -57,7 +57,9 @@ export interface InvestmentResult {
   heatingDelta: number
   hwDelta: number
   cookDelta: number
-  vehicleDelta: number
+  vehicleCost: number
+  vehicleReprise: number
+  vehicleNet: number
   totalInvestment: number
 }
 
@@ -135,9 +137,9 @@ export function computeAnnual(sc: Scenario): AnnualResult {
   const heatingCO2 = hK * ht.ef
   const hwCO2 = wK * hw.ef
   const cookCO2 = cK * ck.ef
-  const heatingCost = hK * (ht.capex + ht.opex)
-  const hwCost = wK * (hw.capex + hw.opex)
-  const cookCost = cK * (ck.capex + ck.opex)
+  const heatingCost = hK * ht.opex
+  const hwCost = wK * hw.opex
+  const cookCost = cK * ck.opex
 
   let fossilEnergy = 0, electricEnergy = 0, totalEnergy = hK + wK + cK
   if (ht.fossil) fossilEnergy += hK; if (ht.electric) electricEnergy += hK
@@ -149,7 +151,7 @@ export function computeAnnual(sc: Scenario): AnnualResult {
     const m = TRANSPORT_MODES.find(x => x.id === t.mode) || TRANSPORT_MODES[0]
     const occ = (m.perVehicle && t.occ > 1) ? t.occ : 1
     const co2 = t.km * m.ef / occ
-    const cost = t.km * ((m.capex / Math.max(occ, 1)) + m.opex)
+    const cost = t.km * m.opex
     const energy = t.km * (m.fossil ? 0.6 : m.electric ? 0.2 : 0.05)
     if (m.fossil) fossilEnergy += energy
     if (m.electric) electricEnergy += energy
@@ -199,18 +201,21 @@ export function computeInvestment(curSc: Scenario, tgtSc: Scenario): InvestmentR
     ? Math.max(0, (findC(tgtSc.cooking)?.equipCost || 0) - (findC(curSc.cooking)?.equipCost || 0) * 0.3)
     : 0
 
-  const curVehicles = curSc.transports.filter(t => (TRANSPORT_MODES.find(x => x.id === t.mode)?.vehicleCost || 0) > 0)
-  const tgtVehicles = tgtSc.transports.filter(t => (TRANSPORT_MODES.find(x => x.id === t.mode)?.vehicleCost || 0) > 0)
-  let vehicleDelta = 0
-  tgtVehicles.forEach((v, i) => {
-    const tm = TRANSPORT_MODES.find(x => x.id === v.mode)
-    const cm = i < curVehicles.length ? TRANSPORT_MODES.find(x => x.id === curVehicles[i].mode) : null
-    vehicleDelta += Math.max(0, (tm?.vehicleCost || 0) - (cm?.vehicleCost || 0))
-  })
+  // Vehicles: total cost of target vehicles - reprise (30% residual value of current vehicles)
+  const vehicleCost = tgtSc.transports.reduce((sum, t) => {
+    const m = TRANSPORT_MODES.find(x => x.id === t.mode)
+    return sum + (m?.vehicleCost || 0)
+  }, 0)
+  const vehicleReprise = curSc.transports.reduce((sum, t) => {
+    const m = TRANSPORT_MODES.find(x => x.id === t.mode)
+    return sum + (m?.vehicleCost || 0) * 0.3
+  }, 0)
+  const vehicleNet = Math.max(0, vehicleCost - vehicleReprise)
 
   return {
     renoCost, renoPerM2, dpeJump,
-    heatingDelta, hwDelta, cookDelta, vehicleDelta,
-    totalInvestment: renoCost + heatingDelta + hwDelta + cookDelta + vehicleDelta,
+    heatingDelta, hwDelta, cookDelta,
+    vehicleCost, vehicleReprise, vehicleNet,
+    totalInvestment: renoCost + heatingDelta + hwDelta + cookDelta + vehicleNet,
   }
 }
