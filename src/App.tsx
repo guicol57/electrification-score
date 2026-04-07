@@ -658,7 +658,7 @@ export default function App() {
       img.src = `https://scoreelec.goatcounter.com/count?p=${encodeURIComponent(window.location.pathname)}&t=${encodeURIComponent(document.title)}&r=${encodeURIComponent(document.referrer)}`
     }
     // Fetch visit count for display
-    fetch('https://scoreelec.goatcounter.com/counter//count.json')
+    fetch('https://scoreelec.goatcounter.com/counter/.json')
       .then(r => r.json())
       .then(d => { if (d?.count) setVisits(parseInt(d.count.replace(/\s/g, ''), 10) || 0) })
       .catch(() => {})
