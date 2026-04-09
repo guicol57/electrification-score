@@ -673,10 +673,10 @@ export default function App() {
 
   const selP = (p: typeof PROFILES[0]) => { setCur({ ...p.cur }); setTgt({ ...p.tgt }); setAp(p.id) }
 
-  // Compute effective target scenario with auto-computed DPE
+  // Compute effective target scenario with auto-computed DPE and per-usage EP
   const effectiveTgt = useMemo(() => {
-    const { dpe } = computeTargetDPE(cur.dpe, cur.heating, cur.hotWater, tgt.heating, tgt.hotWater, tgt.renovations || [])
-    return { ...tgt, dpe }
+    const { dpe, epPerM2, heatingEpPerM2, hwEpPerM2 } = computeTargetDPE(cur.dpe, cur.heating, cur.hotWater, tgt.heating, tgt.hotWater, tgt.renovations || [])
+    return { ...tgt, dpe, epPerM2, heatingEpPerM2, hwEpPerM2 }
   }, [cur.dpe, cur.heating, cur.hotWater, tgt])
 
   const cR = useMemo(() => computeAnnual(cur), [cur])

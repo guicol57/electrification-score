@@ -20,6 +20,11 @@ export interface Scenario {
   cooking: string
   transports: TransportEntry[]
   renovations?: string[]
+  /** Exact EP/m² (when computed from target DPE). Overrides DPE_KWH lookup. */
+  epPerM2?: number
+  /** Per-usage EP/m² breakdown (heating vs ECS computed independently) */
+  heatingEpPerM2?: number
+  hwEpPerM2?: number
 }
 
 export interface ScoreGrade {
@@ -90,7 +95,7 @@ export function roundTen(v: number): number {
 export function computeTargetDPE(
   curDpe: string, curHeating: string, curHotWater: string,
   tgtHeating: string, tgtHotWater: string, renovations: string[]
-): { epPerM2: number; dpe: string } {
+): { epPerM2: number; dpe: string; heatingEpPerM2: number; hwEpPerM2: number } {
   const curEP = DPE_KWH[curDpe] || 230
 
   // 1. Insulation reduction factor (multiplicative)
@@ -98,37 +103,49 @@ export function computeTargetDPE(
     .filter(w => renovations.includes(w.id))
     .reduce((acc, w) => acc * (1 - w.reduction), 1.0)
 
-  // 2. Equipment EP ratio (weighted by heating/ECS shares)
+  // 2. Per-usage EP computation (each usage adjusted independently)
   const curHt = HEATING.find(h => h.id === curHeating)
   const curHw = HOT_WATER.find(h => h.id === curHotWater)
   const tgtHt = HEATING.find(h => h.id === tgtHeating)
   const tgtHw = HOT_WATER.find(h => h.id === tgtHotWater)
 
-  const curWeightedEP = ENERGY_SHARES.heating * (curHt?.epPerUseful ?? 1) + ENERGY_SHARES.hotWater * (curHw?.epPerUseful ?? 1)
-  const tgtWeightedEP = ENERGY_SHARES.heating * (tgtHt?.epPerUseful ?? 1) + ENERGY_SHARES.hotWater * (tgtHw?.epPerUseful ?? 1)
-  const equipmentRatio = curWeightedEP > 0 ? tgtWeightedEP / curWeightedEP : 1
+  const curHeatingEP = curEP * DPE_USEFUL_SHARE * ENERGY_SHARES.heating
+  const curHwEP = curEP * DPE_USEFUL_SHARE * ENERGY_SHARES.hotWater
 
-  // 3. EP_target = EP_useful × insulation × equipment + EP_other (unchanged)
-  const usefulEP = curEP * DPE_USEFUL_SHARE * insulationFactor * equipmentRatio
+  // Each usage: insulation reduction + its OWN equipment ratio
+  const htRatio = (curHt?.epPerUseful ?? 1) > 0 ? (tgtHt?.epPerUseful ?? 1) / (curHt?.epPerUseful ?? 1) : 1
+  const hwRatio = (curHw?.epPerUseful ?? 1) > 0 ? (tgtHw?.epPerUseful ?? 1) / (curHw?.epPerUseful ?? 1) : 1
+
+  const heatingEpPerM2 = curHeatingEP * insulationFactor * htRatio
+  const hwEpPerM2 = curHwEP * insulationFactor * hwRatio
   const otherEP = curEP * (1 - DPE_USEFUL_SHARE)
-  const epPerM2 = Math.round(usefulEP + otherEP)
+  const epPerM2 = Math.round(heatingEpPerM2 + hwEpPerM2 + otherEP)
 
-  return { epPerM2, dpe: epToDpe(epPerM2) }
+  return { epPerM2, dpe: epToDpe(epPerM2), heatingEpPerM2, hwEpPerM2 }
 }
 
 // ---- Core computation ----
 
 export function computeAnnual(sc: Scenario): AnnualResult {
-  const kwh = DPE_KWH[sc.dpe] || 230
   const ht = HEATING.find(t => t.id === sc.heating) || HEATING[0]
   const hw = HOT_WATER.find(t => t.id === sc.hotWater) || HOT_WATER[0]
   const ck = COOKING.find(t => t.id === sc.cooking) || COOKING[0]
 
-  // DPE values are in kWh EP (primary energy). Convert to final energy.
-  // Gas/Oil/Wood: EP factor = 1 → no conversion. Electricity: EP factor = 1.9.
-  const dpeEP = kwh * sc.area * DPE_USEFUL_SHARE
-  const hEP = dpeEP * ENERGY_SHARES.heating
-  const wEP = dpeEP * ENERGY_SHARES.hotWater
+  // Use per-usage EP if available (target scenario), otherwise derive from DPE median
+  let hEP: number, wEP: number
+  if (sc.heatingEpPerM2 !== undefined && sc.hwEpPerM2 !== undefined) {
+    // Target scenario: each usage computed independently (no cross-contamination)
+    hEP = sc.heatingEpPerM2 * sc.area
+    wEP = sc.hwEpPerM2 * sc.area
+  } else {
+    // Current scenario: derive from DPE median
+    const kwh = DPE_KWH[sc.dpe] || 230
+    const dpeEP = kwh * sc.area * DPE_USEFUL_SHARE
+    hEP = dpeEP * ENERGY_SHARES.heating
+    wEP = dpeEP * ENERGY_SHARES.hotWater
+  }
+
+  // Convert EP to final energy. Gas/Oil/Wood: ÷1. Electricity: ÷1.9.
   const hK = hEP / (ht.electric ? EP_TO_EF_ELEC : 1)
   const wK = wEP / (hw.electric ? EP_TO_EF_ELEC : 1)
   // Cooking is NOT in the DPE — estimated separately (already in final energy)
