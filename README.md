@@ -4,7 +4,7 @@
 
 Développé dans le contexte de la crise énergétique liée au conflit en Iran, cet outil aide les citoyens français à comprendre dans quelle mesure ils dépendent des énergies fossiles et à simuler les bénéfices (CO₂, coûts, ROI) d'une transition vers l'électrification de leurs usages.
 
-**[🚀 Essayer en ligne →](https://electrification-score.vercel.app)**
+**[🚀 Essayer en ligne →](https://mon-score-elec.fr)**
 
 ## Fonctionnalités
 
@@ -20,12 +20,12 @@ Développé dans le contexte de la crise énergétique liée au conflit en Iran,
 
 ## Sources de données
 
-Les facteurs d'émission sont fournis par **[Ecodex](https://getecodex.com)** (catalogue de 1M+ facteurs d'émission carbone) via le **[protocole MCP (Model Context Protocol)](https://getecodex.com/connect)** :
+Les facteurs d'émission sont fournis par **[Ecodex](https://getecodex.com)** (catalogue de 1M+ facteurs d'émission carbone) via le **[protocole MCP (Model Context Protocol)](https://getecodex.com/mcp)** :
 
 | Donnée | Source | Périmètre | Via |
 |---|---|---|---|
-| Logement (kgCO₂eq/m²) | PCAF | France 2023, Gate-to-gate | Ecodex MCP |
-| Mobilité (kgCO₂eq/km) | Base Carbone ADEME | France 2020-2025, combustion + amont + fabrication | Ecodex MCP |
+| Logement (kgCO₂eq/kWh) | Base Carbone ADEME | France 2023, combustion + amont énergie | Ecodex MCP |
+| Mobilité (kgCO₂eq/pass.km) | Base Carbone ADEME | France 2020-2025, combustion + amont + fabrication | Ecodex MCP |
 | Coûts énergie | SDES, CRE, Propellet | Scénario prix hauts 2026 | Web |
 | Coûts véhicules (TCO) | Bornetik, Arval | TCO Scope 2024-2025 | Web |
 | Rénovation (€/m²) | Travaux.com, Ithaque | France 2025 | Web |
@@ -81,7 +81,7 @@ Les contributions sont les bienvenues ! Voici quelques pistes :
 ## Crédits
 
 - Facteurs d'émission : [Ecodex](https://getecodex.com) via MCP
-- Sources primaires : PCAF, Base Carbone ADEME, EEA
+- Source primaire : Base Carbone ADEME
 - Coûts : SDES, CRE, Propellet, Bornetik, Arval, Travaux.com
 
 ---
