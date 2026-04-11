@@ -26,6 +26,7 @@ Les facteurs d'émission sont fournis par **[Ecodex](https://getecodex.com)** (c
 |---|---|---|---|
 | Logement (kgCO₂eq/kWh) | Base Carbone ADEME | France 2023, combustion + amont énergie | Ecodex MCP |
 | Mobilité (kgCO₂eq/pass.km) | Base Carbone ADEME | France 2020-2025, combustion + amont + fabrication | Ecodex MCP |
+| Hybrides rechargeables | DEFRA + ADEME | UK 2025 (combustion + amont) + ADEME (fabrication) | Ecodex MCP |
 | Coûts énergie | SDES, CRE, Propellet | Scénario prix hauts 2026 | Web |
 | Coûts véhicules (TCO) | Bornetik, Arval | TCO Scope 2024-2025 | Web |
 | Rénovation (€/m²) | Travaux.com, Ithaque | France 2025 | Web |
@@ -81,7 +82,7 @@ Les contributions sont les bienvenues ! Voici quelques pistes :
 ## Crédits
 
 - Facteurs d'émission : [Ecodex](https://getecodex.com) via MCP
-- Source primaire : Base Carbone ADEME
+- Sources primaires : Base Carbone ADEME, DEFRA (hybrides rechargeables)
 - Coûts : SDES, CRE, Propellet, Bornetik, Arval, Travaux.com
 
 ---

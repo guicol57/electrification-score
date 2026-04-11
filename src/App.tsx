@@ -637,7 +637,7 @@ function Meth() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 7, background: '#f0f0ff', border: '1px solid #c7c7ff', marginTop: 4 }}>
         <EcodexLogo size={28} />
         <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.4 }}>
-          FE fournis par <a href="https://getecodex.com" target="_blank" rel="noopener noreferrer" style={{ color: '#4856FF', fontWeight: 700, textDecoration: 'none' }}>Ecodex</a> (1M+ facteurs d'émission) via le <a href="https://getecodex.com/mcp" target="_blank" rel="noopener noreferrer" style={{ color: '#4856FF', fontWeight: 600, textDecoration: 'none' }}>protocole MCP</a>. Source FE : Base Carbone ADEME.
+          FE fournis par <a href="https://getecodex.com" target="_blank" rel="noopener noreferrer" style={{ color: '#4856FF', fontWeight: 700, textDecoration: 'none' }}>Ecodex</a> (1M+ facteurs d'émission) via le <a href="https://getecodex.com/mcp" target="_blank" rel="noopener noreferrer" style={{ color: '#4856FF', fontWeight: 600, textDecoration: 'none' }}>protocole MCP</a>. Sources FE : <strong>Base Carbone ADEME</strong> (logement et mobilité) ; <strong>DEFRA</strong> (combustion + amont énergie pour les véhicules hybrides rechargeables, non couverts par l'ADEME).
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 7, background: '#f6f6f6', border: '1px solid #e5e7eb', marginTop: 6 }}>

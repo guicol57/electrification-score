@@ -3,6 +3,8 @@
  * Sources:
  *  - Emission factors: Base Carbone ADEME (France 2020-2025) via Ecodex MCP
  *    Scope: combustion + upstream energy + vehicle manufacturing
+ *  - Plug-in hybrids (PHEV): ADEME manufacturing + DEFRA UK (combustion + upstream)
+ *    as ADEME does not provide a combustion factor for PHEVs.
  *  - Costs: TCO complet (CAPEX amortisation + OPEX energy/maintenance)
  *    Sources: Bornetik, Arval TCO Scope 2024, France Stratégie 2022
  */
@@ -39,8 +41,8 @@ export const TRANSPORT_MODES: TransportMode[] = [
   { id: "ev_compact", label: "⚡ Compacte électrique", ef: 0.10, capex: 0.22, opex: 0.08, fossil: false, electric: true, perVehicle: true, category: "Voiture", vehicleCost: 35000 },
   { id: "ev_suv", label: "⚡ Berline/SUV électrique", ef: 0.14, capex: 0.28, opex: 0.09, fossil: false, electric: true, perVehicle: true, category: "Voiture", vehicleCost: 50000 },
   // Hybrides rechargeables
-  { id: "phev_compact", label: "🔌 Compacte hybride rech.", ef: 0.07, capex: 0.24, opex: 0.10, fossil: false, electric: true, perVehicle: true, category: "Voiture", vehicleCost: 35000 },
-  { id: "phev_suv", label: "🔌 SUV hybride rech.", ef: 0.10, capex: 0.28, opex: 0.12, fossil: false, electric: true, perVehicle: true, category: "Voiture", vehicleCost: 48000 },
+  { id: "phev_compact", label: "🔌 Compacte hybride rech.", ef: 0.166, capex: 0.24, opex: 0.10, fossil: true, electric: true, perVehicle: true, category: "Voiture", vehicleCost: 35000 },
+  { id: "phev_suv", label: "🔌 SUV hybride rech.", ef: 0.228, capex: 0.28, opex: 0.12, fossil: true, electric: true, perVehicle: true, category: "Voiture", vehicleCost: 48000 },
   // 2-roues
   { id: "moto", label: "🏍️ Moto thermique", ef: 0.22, capex: 0.10, opex: 0.12, fossil: true, electric: false, perVehicle: true, category: "2-roues", vehicleCost: 8000 },
   { id: "vae", label: "🚲 Vélo électrique", ef: 0.01, capex: 0.03, opex: 0.02, fossil: false, electric: true, perVehicle: false, category: "2-roues", vehicleCost: 2500 },
