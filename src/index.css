@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
   font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;

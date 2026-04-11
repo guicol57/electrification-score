@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RTooltip, Legend, ResponsiveContainer, ReferenceLine,
@@ -654,9 +654,11 @@ function Meth() {
 export default function App() {
   const [cur, setCur] = useState<Scenario>(PROFILES[1].cur)
   const [tgt, setTgt] = useState<Scenario>(PROFILES[1].tgt)
-  const [tab, setTab] = useState('inputs')
+  const [tab, setTab] = useState<'home' | 'method'>('home')
+  const [activeAnchor, setActiveAnchor] = useState<'scenarios' | 'results' | 'business-case'>('scenarios')
   const [ap, setAp] = useState<string | null>(PROFILES[1].id)
   const [visits, setVisits] = useState(0)
+  const pendingAnchorRef = useRef<string | null>(null)
 
   useEffect(() => {
     // Send visit hit directly (no external script, adblocker-proof)
@@ -671,6 +673,77 @@ export default function App() {
       .catch(() => {})
   }, [])
 
+  // Deep-link from URL hash on mount
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '')
+    if (hash === 'method') {
+      setTab('method')
+    } else if (hash === 'scenarios' || hash === 'results' || hash === 'business-case') {
+      requestAnimationFrame(() => {
+        document.getElementById(hash)?.scrollIntoView({ behavior: 'auto', block: 'start' })
+      })
+    }
+  }, [])
+
+  // Scroll-spy: highlight the nav button matching the section in view
+  useEffect(() => {
+    if (tab !== 'home') return
+    const ids: Array<'scenarios' | 'results' | 'business-case'> = ['scenarios', 'results', 'business-case']
+    const elements = ids
+      .map(id => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null)
+    if (elements.length === 0) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter(e => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
+        if (visible.length > 0) {
+          setActiveAnchor(visible[0].target.id as 'scenarios' | 'results' | 'business-case')
+        }
+      },
+      { threshold: [0.25, 0.5, 0.75], rootMargin: '-100px 0px -40% 0px' }
+    )
+    elements.forEach(el => { observer.observe(el) })
+    return () => observer.disconnect()
+  }, [tab])
+
+  // When switching back to 'home' via a nav click, scroll to the pending anchor after render
+  useEffect(() => {
+    if (tab === 'home' && pendingAnchorRef.current) {
+      const id = pendingAnchorRef.current
+      pendingAnchorRef.current = null
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+  }, [tab])
+
+  const goTo = (id: 'scenarios' | 'results' | 'business-case') => {
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `#${id}`)
+    }
+    if (tab !== 'home') {
+      pendingAnchorRef.current = id
+      setTab('home')
+    } else {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  const goMethod = () => {
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', '#method')
+    }
+    setTab('method')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const isActive = (id: 'scenarios' | 'results' | 'business-case' | 'method') => {
+    if (id === 'method') return tab === 'method'
+    return tab === 'home' && activeAnchor === id
+  }
+
   const selP = (p: typeof PROFILES[0]) => { setCur({ ...p.cur }); setTgt({ ...p.tgt }); setAp(p.id) }
 
   // Compute effective target scenario with auto-computed DPE and per-usage EP
@@ -682,39 +755,54 @@ export default function App() {
   const cR = useMemo(() => computeAnnual(cur), [cur])
   const tR = useMemo(() => computeAnnual(effectiveTgt), [effectiveTgt])
 
+  const navButtons: Array<{ id: 'scenarios' | 'results' | 'business-case' | 'method'; l: string; onClick: () => void }> = [
+    { id: 'scenarios', l: '📝 Scénarios', onClick: () => goTo('scenarios') },
+    { id: 'results', l: '📊 Résultats', onClick: () => goTo('results') },
+    { id: 'business-case', l: '💰 Business Case', onClick: () => goTo('business-case') },
+    { id: 'method', l: '📐 Méthodo', onClick: goMethod },
+  ]
+
   return (
-    <div className="min-h-screen p-2.5 font-sans" style={{ overflowX: 'hidden' }}>
-      <div style={{ textAlign: 'center', marginBottom: 10, maxWidth: 600, margin: '0 auto 10px' }}>
-        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-400 text-[9px] font-semibold text-amber-800 mb-1.5">
-          ⚡ Crise énergétique — Évaluez votre exposition aux fossiles
+    <div className="min-h-screen font-sans">
+      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200 px-2.5 pt-2.5 pb-2">
+        <div style={{ textAlign: 'center', marginBottom: 8, maxWidth: 600, margin: '0 auto 8px' }}>
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-400 text-[9px] font-semibold text-amber-800 mb-1.5">
+            ⚡ Crise énergétique — Évaluez votre exposition aux fossiles
+          </div>
+          <h1 className="text-xl font-black text-gray-900 tracking-tight m-0">Mon Score d'Électrification</h1>
+          <p className="text-[11px] text-gray-500 m-0">Logement + Mobilité</p>
         </div>
-        <h1 className="text-xl font-black text-gray-900 tracking-tight m-0">Mon Score d'Électrification</h1>
-        <p className="text-[11px] text-gray-500 m-0">Logement + Mobilité</p>
+
+        <div className="flex justify-center gap-0.5 flex-wrap">
+          {navButtons.map(t => (
+            <button type="button" key={t.id} onClick={t.onClick} className={`px-2.5 py-1 rounded text-[10px] font-bold border-none cursor-pointer transition-all ${isActive(t.id) ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-500'}`}>
+              {t.l}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="flex justify-center gap-0.5 mb-2 flex-wrap">
-        {[{ id: 'inputs', l: '📝 Scénarios' }, { id: 'results', l: '📊 Résultats' }, { id: 'biz', l: '💰 Business Case' }, { id: 'method', l: '📐 Méthodo' }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} className={`px-2.5 py-1 rounded text-[10px] font-bold border-none cursor-pointer transition-all ${tab === t.id ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-500'}`}>
-            {t.l}
-          </button>
-        ))}
-      </div>
-
-      <div className="max-w-7xl mx-auto">
-        {tab === 'inputs' && (
+      <div className="max-w-7xl mx-auto p-2.5">
+        {tab === 'home' && (
           <>
-            <div style={{ padding: '8px 10px', borderRadius: 7, background: '#f0fdf4', border: '1px solid #bbf7d0', marginBottom: 8, fontSize: 10, color: '#166534', lineHeight: 1.5 }}>
-              <strong>Comment utiliser ce simulateur ?</strong> Commencez par choisir un profil type ou renseignez manuellement votre <strong>scénario actuel</strong> (logement, DPE, chauffage, véhicules). Puis définissez votre <strong>scénario cible</strong> en sélectionnant des travaux de rénovation et de nouveaux équipements. Les onglets Résultats et Business Case vous montreront les gains en émissions, coûts et retour sur investissement.
-            </div>
-            <PSel onSelect={selP} activeId={ap} />
-            <div className="flex gap-2 flex-wrap">
-              <ScP title="Scénario actuel" emoji="📍" sc={cur} setSc={s => { setCur(s); setTgt(prev => ({ ...prev, area: s.area })); setAp(null) }} accent="#ef4444" showWarn={true} />
-              <ScP title="Scénario cible" emoji="🎯" sc={tgt} setSc={s => { setTgt(s); setAp(null) }} accent="#10b981" showWarn={false} areaReadOnly isTarget curDpe={cur.dpe} curHeating={cur.heating} curHotWater={cur.hotWater} />
-            </div>
+            <section id="scenarios" className="scroll-mt-32">
+              <div style={{ padding: '8px 10px', borderRadius: 7, background: '#f0fdf4', border: '1px solid #bbf7d0', marginBottom: 8, fontSize: 10, color: '#166534', lineHeight: 1.5 }}>
+                <strong>Comment utiliser ce simulateur ?</strong> Commencez par choisir un profil type ou renseignez manuellement votre <strong>scénario actuel</strong> (logement, DPE, chauffage, véhicules). Puis définissez votre <strong>scénario cible</strong> en sélectionnant des travaux de rénovation et de nouveaux équipements. Les sections Résultats et Business Case ci-dessous vous montreront les gains en émissions, coûts et retour sur investissement.
+              </div>
+              <PSel onSelect={selP} activeId={ap} />
+              <div className="flex gap-2 flex-wrap">
+                <ScP title="Scénario actuel" emoji="📍" sc={cur} setSc={s => { setCur(s); setTgt(prev => ({ ...prev, area: s.area })); setAp(null) }} accent="#ef4444" showWarn={true} />
+                <ScP title="Scénario cible" emoji="🎯" sc={tgt} setSc={s => { setTgt(s); setAp(null) }} accent="#10b981" showWarn={false} areaReadOnly isTarget curDpe={cur.dpe} curHeating={cur.heating} curHotWater={cur.hotWater} />
+              </div>
+            </section>
+            <section id="results" className="scroll-mt-32 mt-6">
+              <Results cur={cR} tgt={tR} />
+            </section>
+            <section id="business-case" className="scroll-mt-32 mt-6">
+              <BizCase curSc={cur} tgtSc={effectiveTgt} curR={cR} tgtR={tR} />
+            </section>
           </>
         )}
-        {tab === 'results' && <Results cur={cR} tgt={tR} />}
-        {tab === 'biz' && <BizCase curSc={cur} tgtSc={effectiveTgt} curR={cR} tgtR={tR} />}
         {tab === 'method' && <Meth />}
       </div>
 
