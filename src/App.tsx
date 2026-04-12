@@ -134,8 +134,8 @@ function TRow({ t, i, onChange, onRemove }: {
       </div>
       <NI value={t.km} onChange={v => onChange(i, 'km', v)} suffix="km/an" step={500} w={72} title="Distance annuelle" />
       {m?.perVehicle && (
-        <Tip text="Nombre moyen d'occupants (1-4). Divise émissions et amortissement par personne.">
-          <NI value={t.occ || 1} onChange={v => onChange(i, 'occ', Math.max(1, Math.min(4, v)))} suffix="👤" step={1} w={34} title="Covoiturage" />
+        <Tip text="Nombre moyen d'occupants (1-9). Divise émissions et amortissement par personne.">
+          <NI value={t.occ || 1} onChange={v => onChange(i, 'occ', Math.max(1, Math.min(9, v)))} suffix="👤" step={1} w={34} title="Covoiturage" />
         </Tip>
       )}
       <input type="text" value={t.label} onChange={e => onChange(i, 'label', e.target.value)}
