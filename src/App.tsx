@@ -15,8 +15,8 @@ const PAGE_META: Record<string, { title: string; description: string }> = {
     description: "Évaluez votre exposition aux énergies fossiles. Logement + Mobilité. Émissions CO₂, coûts complets, ROI sur 15 ans.",
   },
   '/entreprise': {
-    title: "Mon Score d'Électrification · Entreprise (bientôt disponible)",
-    description: "Bientôt : simulateur d'électrification pour entreprises. Bâtiments, flotte, déplacements, procédés industriels. Benchmarks sectoriels, aides tertiaires.",
+    title: "Mon Score d'Électrification · Entreprise",
+    description: "Simulateur d'électrification gratuit pour TPE/PME. Bâtiment, flotte, mobilité des salariés. Plan d'actions classé par temps de retour, repères sectoriels, aides.",
   },
 }
 
