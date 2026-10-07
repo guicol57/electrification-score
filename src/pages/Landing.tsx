@@ -56,21 +56,21 @@ export default function Landing() {
           <Link to="/entreprise" className="no-underline group" style={{ color: 'inherit' }}>
             <div className="bg-white rounded-2xl p-6 border-2 border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all h-full relative" style={{ cursor: 'pointer' }}>
               <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold uppercase tracking-wider">
-                Bientôt
+                Nouveau
               </div>
               <div className="text-4xl mb-3">🏢</div>
               <h2 className="text-xl font-black text-gray-900 m-0 mb-2">Entreprise</h2>
               <p className="text-[13px] text-gray-600 m-0 mb-4 leading-relaxed">
-                Évaluez l'électrification de votre organisation : <strong>bâtiments</strong>, <strong>flotte</strong>, déplacements pro, domicile-travail et <strong>procédés industriels</strong>.
+                Évaluez l'électrification de votre organisation : <strong>bâtiment</strong> (chauffage, eau chaude), <strong>flotte</strong> de véhicules, déplacements pro et domicile-travail.
               </p>
               <ul className="text-[12px] text-gray-700 m-0 pl-4 mb-4 space-y-1">
-                <li>Diagnostic simplifié en 15 min</li>
-                <li>ROI et éligibilité aux aides tertiaires</li>
-                <li>Benchmark vs moyenne sectorielle</li>
-                <li>Adapté TPE/PME (tertiaire, commerce, industrie)</li>
+                <li>Diagnostic en quelques minutes</li>
+                <li>Plan d'actions classé par temps de retour</li>
+                <li>Repère sectoriel et aides mobilisables</li>
+                <li>Adapté TPE/PME (tertiaire, commerce, artisanat)</li>
               </ul>
               <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-500 text-white text-[12px] font-bold group-hover:bg-blue-600 transition-colors">
-                En savoir plus →
+                Commencer →
               </div>
             </div>
           </Link>

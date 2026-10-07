@@ -1,6 +1,6 @@
 # ⚡ Mon Score d'Électrification
 
-> Simulateur open source pour évaluer son niveau d'électrification et son exposition aux énergies fossiles — Logement + Mobilité.
+> Simulateur open source pour évaluer son niveau d'électrification et son exposition aux énergies fossiles — Particulier (logement + mobilité) et Entreprise (bâtiment + flotte).
 
 Développé dans le contexte de la crise énergétique liée au conflit en Iran, cet outil aide les citoyens français à comprendre dans quelle mesure ils dépendent des énergies fossiles et à simuler les bénéfices (CO₂, coûts, ROI) d'une transition vers l'électrification de leurs usages.
 
@@ -18,6 +18,15 @@ Développé dans le contexte de la crise énergétique liée au conflit en Iran,
 - **Profils pré-remplis** : 4 profils types ajustables (urbain, périurbain, rural, récent)
 - **Granularité véhicules** : par segment (citadine, compacte, berline/SUV) et motorisation
 
+### Version Entreprise (`/entreprise`)
+
+- **TPE/PME** : 5 profils sectoriels pré-remplis (bureaux, commerce, hôtellerie-santé-sport, artisans, entrepôts)
+- **Bâtiment** : estimation par ratios sectoriels ou consommations réelles (factures, OPERAT)
+- **Flotte** : voitures et utilitaires, thermiques, hybrides rechargeables ou électriques
+- **Plan d'actions** : bascules vers l'électrique classées par temps de retour, aides ajustables
+- **Mobilité des salariés** : domicile-travail et déplacements pro, affichés à part du score
+- **Lien de partage** : l'état du diagnostic est encodé dans l'URL, aucune donnée stockée
+
 ## Sources de données
 
 Les facteurs d'émission sont fournis par **[Ecodex](https://getecodex.com)** (catalogue de 1M+ facteurs d'émission carbone) via le **[protocole MCP (Model Context Protocol)](https://getecodex.com/mcp)** :
@@ -30,12 +39,17 @@ Les facteurs d'émission sont fournis par **[Ecodex](https://getecodex.com)** (c
 | Coûts énergie | SDES, CRE, Propellet | Scénario prix hauts 2026 | Web |
 | Coûts véhicules (TCO) | Bornetik, Arval | TCO Scope 2024-2025 | Web |
 | Rénovation (€/m²) | Travaux.com, Ithaque | France 2025 | Web |
+| Carburants pro (kgCO₂eq/L) | Base Carbone ADEME | 2026, combustion + amont | Ecodex MCP |
+| Utilitaires (kgCO₂eq/km) | DEFRA, Base Carbone ADEME | 2026 (usage) + fabrication | Ecodex MCP |
+| Ratios tertiaires (kWh/m²) | OPERAT, CEREN | Ordres de grandeur | Web |
+| Parts modales domicile-travail | Insee Focus n°143 | France 2015 | Web |
 
 ## Périmètre
 
 Cet outil couvre exclusivement les **usages électrifiables** :
 - 🏠 **Logement** : chauffage, eau chaude sanitaire, cuisson
 - 🚗 **Mobilité** : transports quotidiens et occasionnels
+- 🏢 **Entreprise** : chauffage, eau chaude, climatisation et éclairage du bâtiment ; flotte de voitures et d'utilitaires (poids lourds, engins et procédés industriels : versions ultérieures)
 
 Il ne constitue **ni un bilan carbone complet** ni un scope 1/2 au sens du GHG Protocol. Pour un bilan individuel complet incluant alimentation, achats et services, consultez [Nos Gestes Climat](https://nosgestesclimat.fr) (ADEME).
 
@@ -46,6 +60,7 @@ Il ne constitue **ni un bilan carbone complet** ni un scope 1/2 au sens du GHG P
 - **Graphiques** : [Recharts](https://recharts.org/)
 - **Hébergement** : [Vercel](https://vercel.com/)
 - **Calcul** : 100% côté client, pas de backend
+- **Tests** : [Vitest](https://vitest.dev/) sur le moteur Entreprise (`npm test`)
 
 ## Installation locale
 
