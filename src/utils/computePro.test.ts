@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { SECTORS, DEFAULT_PRICES, COMMUTE_MODES, DEFAULT_COMMUTE_KM, DEFAULT_WORKING_DAYS } from '../data/pro'
+import { SECTORS, DEFAULT_PRICES, COMMUTE_MODES, DEFAULT_COMMUTE_KM, DEFAULT_WORKING_DAYS, DIESEL_KWH_PER_L, PETROL_KWH_PER_L, OIL_KWH_PER_L } from '../data/pro'
+import type { EnergyPrices } from '../data/pro'
 import {
   computeNeeds, computeProAnnual, computeMobility, computeBenchmark,
   buildLevers, evaluateLevers, applyLevers, cumulativeCosts,
   type ProInput, type ProScenario,
 } from './computePro'
+
+// Fixed prices (€ HT/kWh) so the hand-computed cases do not move when default prices are recalibrated
+const TEST_PRICES: EnergyPrices = { gas: 0.09, oil: 0.11, elec: 0.18, district: 0.10, diesel: 1.45 / DIESEL_KWH_PER_L, petrol: 1.55 / PETROL_KWH_PER_L }
 
 const defaultShares = Object.fromEntries(COMMUTE_MODES.map(m => [m.id, m.share]))
 
@@ -17,7 +21,7 @@ function inputFor(sectorId: string, overrides: Partial<ProInput> = {}): ProInput
     fleet: s.defaults.fleet.map(l => ({ ...l })),
     travel: [],
     commute: { kmOneWay: DEFAULT_COMMUTE_KM, days: DEFAULT_WORKING_DAYS, shares: defaultShares },
-    prices: { ...DEFAULT_PRICES },
+    prices: { ...TEST_PRICES },
     ...overrides,
   }
 }
@@ -163,5 +167,15 @@ describe('benchmark and business case', () => {
     expect(pts[0]).toEqual({ year: 0, actuel: 0, cible: 10000 })
     expect(pts).toHaveLength(11)
     expect(pts[10].cible - pts[10].actuel).toBeCloseTo(10000, 6)
+  })
+})
+
+describe('default prices', () => {
+  it('match France averages of early October 2026, excl. VAT', () => {
+    expect(DEFAULT_PRICES.diesel * DIESEL_KWH_PER_L).toBeCloseTo(2.363 / 1.2, 6)
+    expect(DEFAULT_PRICES.petrol * PETROL_KWH_PER_L).toBeCloseTo(2.144 / 1.2, 6)
+    expect(DEFAULT_PRICES.oil * OIL_KWH_PER_L).toBeCloseTo(1.827 / 1.2, 6)
+    expect(DEFAULT_PRICES.gas).toBeCloseTo(0.14557 / 1.2, 6)
+    expect(DEFAULT_PRICES.elec).toBe(0.1624)
   })
 })

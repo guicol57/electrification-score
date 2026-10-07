@@ -245,7 +245,7 @@ function PricesCard({ input, set }: { input: ProInput; set: (p: Partial<ProInput
   return (
     <details style={{ ...card, flex: '1 1 100%' }}>
       <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-        ⚙️ Prix de l'énergie <span style={{ textTransform: 'none', fontWeight: 400, color: '#6b7280' }}>· hors TVA, ajustables selon vos contrats</span>
+        ⚙️ Prix de l'énergie <span style={{ textTransform: 'none', fontWeight: 400, color: '#6b7280' }}>· hors TVA, moyennes France d'octobre 2026, ajustables selon vos contrats</span>
       </summary>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginTop: 8 }}>
         {ENERGY_IDS.map((id: EnergyId) => {
@@ -381,6 +381,33 @@ function AidsTip() {
   )
 }
 
+/** Explains an inflation rate with the prices currently entered (excl. VAT) */
+function InflationTip({ kind, rate, prices }: { kind: 'fossil' | 'elec'; rate: number; prices: ProInput['prices'] }) {
+  const at = (p: number, y: number) => p * Math.pow(1 + rate / 100, y)
+  const diesel = prices.diesel * (ENERGIES.diesel.displayUnit?.kwhPerUnit ?? 1)
+  const row = (label: string, p: number, d: number, unit: string) => <>• {label} : {dec(p, d)} {unit}<br /></>
+  return (
+    <Tip align="left" below text={kind === 'fossil' ? <>
+      <strong>Que signifie +{rate} %/an ?</strong><br /><br />
+      Avec un gazole à {dec(diesel, 2)} €/L HT aujourd'hui :<br />
+      {row('Dans 1 an', at(diesel, 1), 2, '€/L')}
+      {row('Dans 5 ans', at(diesel, 5), 2, '€/L')}
+      {row('Dans 10 ans', at(diesel, 10), 2, '€/L')}<br />
+      Avec un gaz à {dec(prices.gas, 3)} €/kWh HT aujourd'hui :<br />
+      {row('Dans 5 ans', at(prices.gas, 5), 3, '€/kWh')}
+      {row('Dans 10 ans', at(prices.gas, 10), 3, '€/kWh')}<br />
+      <em>Plus l'inflation fossile est élevée, plus l'électrification devient rentable rapidement.</em>
+    </> : <>
+      <strong>Que signifie +{rate} %/an ?</strong><br /><br />
+      Avec une électricité à {dec(prices.elec, 3)} €/kWh HT aujourd'hui :<br />
+      {row('Dans 1 an', at(prices.elec, 1), 3, '€/kWh')}
+      {row('Dans 5 ans', at(prices.elec, 5), 3, '€/kWh')}
+      {row('Dans 10 ans', at(prices.elec, 10), 3, '€/kWh')}<br />
+      <em>L'électricité a historiquement une inflation plus faible que les énergies fossiles en France, grâce au nucléaire et aux renouvelables.</em>
+    </>}>{info}</Tip>
+  )
+}
+
 function Plan({ input, cur, levers, off, setOff, aid, setAid, heatingTarget, setHeatingTarget, tgt, netInvestment }: {
   input: ProInput; cur: ProAnnualResult; levers: LeverResult[]
   off: string[]; setOff: (v: string[]) => void
@@ -479,8 +506,8 @@ function Plan({ input, cur, levers, off, setOff, aid, setAid, heatingTarget, set
       </div>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
         <div><FL>Durée</FL><NI value={years} onChange={v => setYears(Math.max(3, Math.min(25, v)))} suffix="ans" step={1} w={48} /></div>
-        <div><FL>Inflation fossiles</FL><NI value={fInfl} onChange={v => setFInfl(Math.max(0, Math.min(15, v)))} suffix="%/an" step={1} w={48} /></div>
-        <div><FL>Inflation électricité</FL><NI value={eInfl} onChange={v => setEInfl(Math.max(0, Math.min(10, v)))} suffix="%/an" step={1} w={48} /></div>
+        <div><FL>Inflation fossiles <InflationTip kind="fossil" rate={fInfl} prices={input.prices} /></FL><NI value={fInfl} onChange={v => setFInfl(Math.max(0, Math.min(15, v)))} suffix="%/an" step={1} w={48} /></div>
+        <div><FL>Inflation électricité <InflationTip kind="elec" rate={eInfl} prices={input.prices} /></FL><NI value={eInfl} onChange={v => setEInfl(Math.max(0, Math.min(10, v)))} suffix="%/an" step={1} w={48} /></div>
       </div>
       <div style={{ height: 220, marginBottom: 6 }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -555,7 +582,7 @@ function Meth({ prices }: { prices: ProInput['prices'] }) {
           return <tr key={id}><td style={td}>{e.label}</td><td style={td}>{dec(e.ef, 3)}</td><td style={td}>{e.displayUnit ? `${dec(DEFAULT_PRICES[id] * e.displayUnit.kwhPerUnit, 2)} ${e.displayUnit.label}` : `${dec(DEFAULT_PRICES[id], 2)} €/kWh`}</td><td style={td}>{e.kind === 'fossil' ? 'Fossile' : e.kind === 'electric' ? 'Électrique' : 'Autre'}</td></tr>
         })}</tbody>
       </table>
-      <p style={{ ...ps, marginTop: 4 }}>Facteurs d'émission : Base Carbone ADEME via {a('https://getecodex.com', 'Ecodex')} (combustion + amont). Gazole 3,48 kgCO₂e/L et essence E10 2,84 kgCO₂e/L (Base Carbone 2026). Prix : hypothèses 2026 hors TVA, à ajuster selon vos contrats.</p>
+      <p style={{ ...ps, marginTop: 4 }}>Facteurs d'émission : Base Carbone ADEME via {a('https://getecodex.com', 'Ecodex')} (combustion + amont). Gazole 3,48 kgCO₂e/L et essence E10 2,84 kgCO₂e/L (Base Carbone 2026). Prix par défaut : moyennes France de début octobre 2026, converties hors TVA (TTC ÷ 1,2) : gazole 2,363 €/L et SP95-E10 2,144 €/L TTC ({a('https://prix-carburant.eu/article/prix-carburants-2026-10-03', 'prix-carburant.eu')}, 3 octobre), fioul 1,827 €/L TTC ({a('https://prixfioul.fr', 'prixfioul.fr')}), gaz 0,1456 €/kWh TTC ({a('https://www.fournisseurs-electricite.com/contrat-gaz/prix/prix-repere', 'prix repère CRE')}, profil chauffage), électricité 0,1624 €/kWh HTVA ({a('https://entreprises.selectra.info/energie/electricite/tarifs-professionnels', 'Tarif Bleu Pro')}, option Base, accise incluse). Réseau de chaleur : 104,7 € HT/MWh, moyenne nationale 2024 (SNCU), dernière publiée. Abonnements non inclus ; ajustez selon vos contrats.</p>
 
       <h3 style={h}>5. Mobilité des salariés</h3>
       <p style={ps}>
